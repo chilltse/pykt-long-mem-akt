@@ -97,6 +97,9 @@ def main(params):
         train_loader, valid_loader, *_ = init_dataset4train(dataset_name, model_name, data_config, fold, batch_size, diff_level=diff_level)
 
     params_str = "_".join([str(v) for k,v in params.items() if not k in ['other_config']])
+    if model_name == "long_mem_akt":
+        # Absolute save_dir must not become nested path components in the run name.
+        params_str = "_".join(str(v) for k, v in params.items() if k not in ['other_config', 'save_dir'])
 
     print(f"params: {params}, params_str: {params_str}")
     if params['add_uuid'] == 1 and params["use_wandb"] == 1:
@@ -117,6 +120,8 @@ def main(params):
     save_config(train_config, model_config, data_config[dataset_name], params, ckpt_path)
     learning_rate = params["learning_rate"]
     for remove_item in ['use_wandb','learning_rate','add_uuid','l2','batch_size','num_epochs','weight_decay']:
+        if model_name == "long_mem_akt" and remove_item == "l2":
+            continue
         if remove_item in model_config:
             del model_config[remove_item]
     if model_name in ["saint","saint++", "sakt", "atdkt", "simplekt","stablekt", "datakt","folibikt", "mtkt"] + OPERA_SEQ_LEN_MODELS:
