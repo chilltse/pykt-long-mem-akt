@@ -50,6 +50,11 @@ def save_cur_predict_result(dres, q, r, d, t, m, sm, p):
     return "\n".join(results)
 
 def evaluate(model, test_loader, model_name, rel=None, save_path=""):
+    if model_name == "long_mem_akt":
+        from .long_mem_akt_runner import evaluate_long_mem_akt
+        auc, acc, diagnostics = evaluate_long_mem_akt(model, test_loader, save_path=save_path or (rel if isinstance(rel, str) else ""))
+        print(f"LongMemAKT logloss: {diagnostics['logloss']:.6f}, brier: {diagnostics['brier']:.6f}")
+        return auc, acc
     if save_path != "":
         fout = open(save_path, "w", encoding="utf8")
     with torch.no_grad():

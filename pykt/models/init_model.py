@@ -48,6 +48,7 @@ from .dkvmn_enhance_pro import DKVMN_Enhance_PRO
 from .sakt_enhance_pro import SAKT_Enhance_PRO
 from .akt_enhance_pro_qid import AKT_Enhance_Pro_qid
 from .simplekt_enhance_pro_qid import simpleKT_enhance_pro_qid
+from .long_mem_akt import LongMemAKT
 
 device = "cpu" if not torch.cuda.is_available() else "cuda"
 
@@ -72,6 +73,8 @@ def init_model(model_name, model_config, data_config, emb_type, dataset_name=Non
         model = DKTForget(data_config["num_c"], data_config["num_rgap"], data_config["num_sgap"], data_config["num_pcount"], **model_config).to(device)
     elif model_name == "akt":
         model = AKT(data_config["num_c"], data_config["num_q"], **model_config, emb_type=emb_type, emb_path=data_config["emb_path"]).to(device)
+    elif model_name == "long_mem_akt":
+        model = LongMemAKT(data_config["num_c"], data_config["num_q"], **model_config, emb_type=emb_type).to(device)
     elif model_name == "lefokt_akt":
         model = LEFOKT_AKT(data_config["num_c"], data_config["num_q"], **model_config, emb_type=emb_type, emb_path=data_config["emb_path"]).to(device)
     elif model_name == "extrakt":

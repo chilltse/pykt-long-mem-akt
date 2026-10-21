@@ -10,6 +10,8 @@ from .atkt import _l2_normalize_adv
 from ..utils.utils import debug_print
 from pykt.config import que_type_models
 import pandas as pd
+import json
+from .long_mem_akt_runner import train_long_mem_akt, evaluate_long_mem_akt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -295,6 +297,7 @@ def model_forward(model, data, rel=None):
     
 
 def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, test_loader=None, test_window_loader=None, save_model=False, data_config=None, fold=None):
+    testauc = testacc = window_testauc = window_testacc = validauc = validacc = -1
     max_auc, best_epoch = 0, -1
     train_step = 0
 
@@ -314,6 +317,27 @@ def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, t
     if model.model_name=='lpkt':
         scheduler = torch.optim.lr_scheduler.StepLR(opt, 10, gamma=0.5)
     for i in range(1, num_epochs + 1):
+        if model.model_name == "long_mem_akt":
+            loss_mean = train_long_mem_akt(model, train_loader, opt)
+            auc, acc, diagnostics = evaluate_long_mem_akt(model, valid_loader)
+            if ckpt_path:
+                os.makedirs(ckpt_path, exist_ok=True)
+                with open(os.path.join(ckpt_path, "long_mem_metrics.jsonl"), "a") as handle:
+                    json.dump(dict(epoch=i, train_loss=loss_mean,
+                                   auc=auc if np.isfinite(auc) else None, accuracy=acc,
+                                   **model.last_train_diagnostics, **diagnostics), handle)
+                    handle.write("\n")
+            if best_epoch == -1 or auc > max_auc + 1e-3:
+                if save_model:
+                    torch.save(model.state_dict(), os.path.join(ckpt_path, model.emb_type+"_model.ckpt"))
+                max_auc, best_epoch, validauc, validacc = auc, i, auc, acc
+                if not save_model and test_loader is not None:
+                    testauc, testacc, _ = evaluate_long_mem_akt(model, test_loader)
+            print(f"Epoch: {i}, validauc: {validauc:.4}, validacc: {validacc:.4}, "
+                  f"train loss: {loss_mean:.6f}, logloss: {diagnostics['logloss']:.6f}, brier: {diagnostics['brier']:.6f}")
+            if i - best_epoch >= 10:
+                break
+            continue
         loss_mean = []
         for data in train_loader:
             train_step+=1

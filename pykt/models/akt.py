@@ -63,9 +63,10 @@ class AKT(nn.Module):
         self.reset()
 
     def reset(self):
-        for p in self.parameters():
-            if p.size(0) == self.n_pid+1 and self.n_pid > 0:
-                torch.nn.init.constant_(p, 0.)
+        # Only PID difficulty starts at zero. Shape-based matching can also
+        # erase KC directions, response embeddings or entire attention matrices.
+        if self.n_pid > 0:
+            torch.nn.init.constant_(self.difficult_param.weight, 0.)
 
     def base_emb(self, q_data, target):
         q_embed_data = self.q_embed(q_data)  # BS, seqlen,  d_model# c_ct
@@ -77,7 +78,8 @@ class AKT(nn.Module):
             qa_embed_data = self.qa_embed(target)+q_embed_data
         return q_embed_data, qa_embed_data
 
-    def forward(self, q_data, target, pid_data=None, qtest=False):
+    def encode_embeddings(self, q_data, target, pid_data=None):
+        """Original AKT Rasch question/interaction representations, reusable by hybrids."""
         emb_type = self.emb_type
         # Batch First
         if emb_type.startswith("qid"):
@@ -102,6 +104,11 @@ class AKT(nn.Module):
         else:
             c_reg_loss = 0.
 
+        return q_embed_data, qa_embed_data, pid_embed_data, c_reg_loss
+
+    def forward(self, q_data, target, pid_data=None, qtest=False):
+        q_embed_data, qa_embed_data, pid_embed_data, c_reg_loss = self.encode_embeddings(
+            q_data, target, pid_data)
         # BS.seqlen,d_model
         # Pass to the decoder
         # output shape BS,seqlen,d_model or d_model//2
@@ -210,7 +217,7 @@ class TransformerLayer(nn.Module):
         seqlen, batch_size = query.size(1), query.size(0)
         nopeek_mask = np.triu(
             np.ones((1, 1, seqlen, seqlen)), k=mask).astype('uint8')
-        src_mask = (torch.from_numpy(nopeek_mask) == 0).to(device)
+        src_mask = (torch.from_numpy(nopeek_mask) == 0).to(query.device)
         if mask == 0:  # If 0, zero-padding is needed.
             # Calls block.masked_attn_head.forward() method
             query2 = self.masked_attn_head(
@@ -326,7 +333,7 @@ class MultiHeadAttention(nn.Module):
     def pad_zero(self, scores, bs, dim, zero_pad):
         if zero_pad:
             # # need: torch.Size([64, 1, 200]), scores: torch.Size([64, 200, 200]), v: torch.Size([64, 200, 32])
-            pad_zero = torch.zeros(bs, 1, dim).to(device)
+            pad_zero = scores.new_zeros(bs, 1, dim)
             scores = torch.cat([pad_zero, scores[:, 0:-1, :]], dim=1) # 所有v后置一位
         return scores
 
@@ -340,19 +347,19 @@ def attention(q, k, v, d_k, mask, dropout, zero_pad, gamma=None, pdiff=None):
         math.sqrt(d_k)  # BS, 8, seqlen, seqlen
     bs, head, seqlen = scores.size(0), scores.size(1), scores.size(2)
 
-    x1 = torch.arange(seqlen).expand(seqlen, -1).to(device)
+    x1 = torch.arange(seqlen, device=q.device).expand(seqlen, -1)
     x2 = x1.transpose(0, 1).contiguous()
 
     with torch.no_grad():
         scores_ = scores.masked_fill(mask == 0, -1e32)
         scores_ = F.softmax(scores_, dim=-1)  # BS,8,seqlen,seqlen
-        scores_ = scores_ * mask.float().to(device) # 结果和上一步一样
+        scores_ = scores_ * mask.to(dtype=scores.dtype, device=q.device) # 结果和上一步一样
         distcum_scores = torch.cumsum(scores_, dim=-1)  # bs, 8, sl, sl
         disttotal_scores = torch.sum(
             scores_, dim=-1, keepdim=True)  # bs, 8, sl, 1 全1
         # print(f"distotal_scores: {disttotal_scores}")
         position_effect = torch.abs(
-            x1-x2)[None, None, :, :].type(torch.FloatTensor).to(device)  # 1, 1, seqlen, seqlen 位置差值
+            x1-x2)[None, None, :, :].to(dtype=q.dtype)  # 1, 1, seqlen, seqlen 位置差值
         # bs, 8, sl, sl positive distance
         dist_scores = torch.clamp(
             (disttotal_scores-distcum_scores)*position_effect, min=0.) # score <0 时，设置为0
@@ -375,7 +382,7 @@ def attention(q, k, v, d_k, mask, dropout, zero_pad, gamma=None, pdiff=None):
     # print(f"before zero pad scores: {scores.shape}")
     # print(zero_pad)
     if zero_pad:
-        pad_zero = torch.zeros(bs, head, 1, seqlen).to(device)
+        pad_zero = scores.new_zeros(bs, head, 1, seqlen)
         scores = torch.cat([pad_zero, scores[:, :, 1:, :]], dim=2) # 第一行score置0
     # print(f"after zero pad scores: {scores}")
     scores = dropout(scores)
