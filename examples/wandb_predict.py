@@ -20,7 +20,15 @@ def main(params):
     with open(os.path.join(save_dir, "config.json")) as fin:
         config = json.load(fin)
         if config['params']['model_name'] == 'long_mem_akt':
-            raise ValueError("Use wandb_long_mem_akt_train.py --stage evaluate; the old LongMemAKT prediction CLI has been removed")
+            from pykt.models.long_mem_akt_workflow import load_artifact, role_loader, write_json
+            from pykt.models.long_mem_akt_runner import evaluate_long_mem_akt
+            model, _, _, roles = load_artifact(save_dir, device)
+            auc, accuracy, diagnostics = evaluate_long_mem_akt(
+                model, role_loader(roles, "test"), os.path.join(save_dir, "test_predictions.csv"))
+            report = dict(auc=auc, accuracy=accuracy, **diagnostics)
+            write_json(os.path.join(save_dir, "test_metrics.json"), report)
+            print(report)
+            return
         model_config = copy.deepcopy(config["model_config"])
         for remove_item in ['use_wandb','learning_rate','add_uuid','l2','num_epochs','batch_size','weight_decay']:
             if remove_item in model_config:

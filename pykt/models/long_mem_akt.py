@@ -5,19 +5,10 @@ vectors. Only the writer has a separate causal encoder. Runtime memory is an
 explicit argument, never persistent module state.
 """
 import math
-import hashlib
-import time
 import torch
 from torch import nn
 import torch.nn.functional as F
 from .akt import AKT
-
-
-def smoothstep(value, threshold, width):
-    if width <= 0:
-        raise ValueError("width must be positive")
-    x = ((value - threshold) / width).clamp(0, 1)
-    return x.square() * (3 - 2*x)
 
 
 class LongMemAKT(nn.Module):
@@ -26,10 +17,10 @@ class LongMemAKT(nn.Module):
     def __init__(self, n_question, n_pid, d_model=128, n_blocks=2, dropout=.1,
                  num_slots=32, value_dim=None, block_size=200, tbptt_blocks=2,
                  time_weight=True, event_distance_fallback=False, time_unit=1000.,
-                 phase="inference", num_attn_heads=8, d_ff=256,
+                 phase="candidate", num_attn_heads=8, d_ff=256,
                  kq_same=1, separate_qa=False, l2=1e-5, final_fc_dim=512,
                  emb_type="qid", write_encoding="causal", score_protocol="legacy",
-                 correction_hidden=64, benefit_hidden=32, mc_samples=20, mc_seed=42):
+                 correction_hidden=64):
         super().__init__()
         if d_model % num_attn_heads or min(block_size, tbptt_blocks, num_slots, n_blocks) < 1:
             raise ValueError("Positive sizes and d_model divisible by num_attn_heads required")
@@ -64,32 +55,23 @@ class LongMemAKT(nn.Module):
         self.add = nn.Sequential(nn.Linear(2*value_dim + 1, value_dim), nn.Tanh())
         self.raw_lambda = nn.Parameter(torch.tensor(-5.))
         self.raw_kappa = nn.Parameter(torch.tensor(0.))
-        self.mc_samples, self.mc_seed = mc_samples, mc_seed
-        if mc_samples < 2:
-            raise ValueError("mc_samples must be >= 2")
         self.correction_head = nn.Sequential(nn.Linear(3*d_model+1, correction_hidden),
                                              nn.GELU(), nn.Linear(correction_hidden, 1))
         nn.init.zeros_(self.correction_head[-1].weight)
         nn.init.zeros_(self.correction_head[-1].bias)
-        self.benefit_head = nn.Sequential(nn.Linear(3*d_model+2, benefit_hidden),
-                                          nn.GELU(), nn.Linear(benefit_hidden, 1))
-        self.register_buffer("calibration", torch.full((4,), float("nan"), dtype=torch.float64))
-        self.register_buffer("selector_ready", torch.tensor(False))
-        self.register_buffer("uncertainty_only", torch.tensor(False))
         self.set_stage(phase)
 
     def set_stage(self, stage):
-        if stage not in {"base", "candidate", "benefit", "inference"}:
+        if stage not in {"base", "candidate", "inference"}:
             raise ValueError("Unknown residual stage")
         if stage == "candidate" and self.tbptt_blocks < 2:
             raise ValueError("Candidate training requires tbptt_blocks >= 2")
         for name, parameter in self.named_parameters():
-            enabled = (stage == "base" and name.startswith("akt.")) or (stage == "benefit" and name.startswith("benefit_head.")) or (
-                stage == "candidate" and not name.startswith(
-                    ("akt.", "benefit_head.")))
+            enabled = (stage == "base" and name.startswith("akt.")) or (
+                stage == "candidate" and not name.startswith("akt."))
             parameter.requires_grad_(enabled)
             parameter.grad = None
-        self.stage = stage
+        self.stage = self.phase = stage
         self.train(self.training)
 
     def train(self, mode=True):
@@ -100,47 +82,7 @@ class LongMemAKT(nn.Module):
         if stage not in {"base", "candidate"}:
             for module in self.children():
                 module.eval()
-            self.benefit_head.train(mode and stage == "benefit")
         return self
-
-    def set_calibration(self, tau_u, width_u, tau_g, width_g, uncertainty_only=False):
-        values = [tau_u, width_u, tau_g, width_g]
-        if not all(math.isfinite(v) for v in values) or min(width_u, width_g) <= 0 or min(tau_u, tau_g) < 0:
-            raise ValueError("Finite nonnegative thresholds and positive widths required")
-        self.calibration.copy_(self.calibration.new_tensor(values))
-        self.uncertainty_only.fill_(uncertainty_only)
-
-    @torch.no_grad()
-    def mc_uncertainty(self, c, q, r, valid, uid, block_index):
-        """Sample AKT only, preserving individual modes, gradients and caller RNG."""
-        probability_dtype = self.akt.q_embed.weight.dtype
-        if not valid.any():
-            return torch.zeros_like(r, dtype=probability_dtype)
-        key = f"{self.mc_seed}:{uid}:{block_index}".encode()
-        seed = int.from_bytes(hashlib.sha256(key).digest()[:8], "big") % (2**63-1)
-        modes = [(module, module.training) for module in self.akt.modules()]
-        devices = [c.device.index] if c.is_cuda else []
-        try:
-            with torch.random.fork_rng(devices=devices):
-                torch.random.default_generator.manual_seed(seed)
-                if c.is_cuda:
-                    with torch.cuda.device(c.device):
-                        torch.cuda.manual_seed(seed)
-                self.akt.eval()
-                for module in self.akt.modules():
-                    if isinstance(module, nn.Dropout):
-                        module.train()
-                mean = torch.zeros_like(r, dtype=torch.float64)
-                m2 = torch.zeros_like(mean)
-                for i in range(self.mc_samples):
-                    p = self._forward_short(c, q, r, valid)["logits"].sigmoid().double()
-                    delta = p - mean
-                    mean += delta / (i+1)
-                    m2 += delta * (p-mean)
-                return (m2/self.mc_samples).clamp_min(0).to(probability_dtype).masked_fill(~valid, 0)
-        finally:
-            for module, mode in modes:
-                module.training = mode
 
     def initial_memory(self, batch, device):
         # clone gives each runtime state separate storage while retaining M_init gradients.
@@ -197,68 +139,25 @@ class LongMemAKT(nn.Module):
 
     def _residual_prediction(self, c, q, r, valid, base, weights, l, s,
                              has_history, uid, block_index):
-        selective = self.phase == "inference"
-        if selective and (not bool(self.selector_ready) or not torch.isfinite(self.calibration).all()):
-            raise ValueError("Selective inference requires trained benefit and calibration")
         z = base["logits"]
         history = torch.as_tensor(has_history, device=z.device, dtype=torch.bool)
         if history.ndim == 1:
             history = history[:, None]
         history = history.expand_as(valid) & valid
         features = torch.cat([F.layer_norm(base["query"], (s.size(-1),)), s, l, z[..., None]], -1)
-        uncertainty, mc_seconds = torch.zeros_like(z), 0.
-        active = history.clone()
-        if selective and history.any():
-            if c.is_cuda:
-                torch.cuda.synchronize(c.device)
-            started = time.perf_counter()
-            uncertainty = self.mc_uncertainty(c, q, r, valid, uid, block_index)
-            if c.is_cuda:
-                torch.cuda.synchronize(c.device)
-            mc_seconds = time.perf_counter()-started
-            active &= uncertainty > self.calibration[0]
         delta = torch.zeros_like(z)
-        gain = torch.full_like(z, float("nan"))
-        if active.any():
-            delta = delta.masked_scatter(active, self.correction_head(features[active]).squeeze(-1))
-        benefit_input = torch.cat([features, delta[..., None]], -1)
-        if selective and not bool(self.uncertainty_only) and active.any():
-            gain[active] = self.benefit_head(benefit_input[active]).squeeze(-1)
+        if history.any():
+            delta = delta.masked_scatter(history, self.correction_head(features[history]).squeeze(-1))
         finite = torch.isfinite(delta) & torch.isfinite(features).all(-1)
-        if selective:
-            finite &= torch.isfinite(uncertainty)
-            if not bool(self.uncertainty_only):
-                finite &= ~active | torch.isfinite(gain)
-        alpha = torch.zeros_like(z)
-        accepted = active & finite
-        if selective:
-            tu, wu, tg, wg = self.calibration.tolist()
-            if accepted.any():
-                a = smoothstep(uncertainty[accepted], tu, wu)
-                if not bool(self.uncertainty_only):
-                    a = a * smoothstep(gain[accepted], tg, wg)
-                alpha[accepted] = a
-        else:
-            alpha[accepted] = 1
+        applied = history & finite
         final = z.clone()
-        intervention = accepted & (alpha > 0)
-        final[intervention] = z[intervention] + alpha[intervention]*delta[intervention]
-        bad = history & ~finite
+        final[applied] = z[applied] + delta[applied]
         reason = torch.zeros_like(r, dtype=torch.long)
         reason[~history] = 1
-        if selective:
-            reason[history & ~active] = 2
-            reason[accepted & ~intervention] = 3
-        reason[bad] = 4
-        candidate = torch.full_like(z, float("nan"))
-        candidate[active & finite] = (z + delta)[active & finite].sigmoid()
+        reason[history & ~finite] = 2
         cache = dict(base, weights=weights, logits=final, base_logits=z,
-                     base_probability=z.sigmoid(), candidate_probability=candidate,
-                     short_uncertainty=uncertainty, predicted_gain=gain, alpha=alpha,
-                     residual_logit=delta, has_history=history, candidate_evaluated=active,
-                     intervention=intervention, fallback_reason=reason,
-                     benefit_input=benefit_input, mc_seconds=mc_seconds,
-                     numerical_fallback_count=int(bad.sum()))
+                     base_probability=z.sigmoid(), residual_logit=delta,
+                     has_history=history, residual_applied=applied, fallback_reason=reason)
         return final.sigmoid(), cache
 
     def encode_write(self, valid, cache):

@@ -324,7 +324,7 @@ def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, t
             if ckpt_path:
                 os.makedirs(ckpt_path, exist_ok=True)
                 with open(os.path.join(ckpt_path, "long_mem_metrics.jsonl"), "a") as handle:
-                    json.dump(dict(epoch=i, train_loss=loss_mean,
+                    json.dump(dict(epoch=i, phase=model.phase, train_loss=loss_mean,
                                    auc=auc if np.isfinite(auc) else None, accuracy=acc,
                                    **model.last_train_diagnostics, **diagnostics), handle)
                     handle.write("\n")

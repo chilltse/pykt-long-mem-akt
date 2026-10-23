@@ -88,41 +88,41 @@ The hyper parameter tunning results of our experiments about all the DLKT models
 
 ## LongMemAKT
 
-现有 `long_mem_akt` 已完整替换为选择性长期修正模型。旧四模式、旧参数和旧 checkpoint 不再支持。
-唯一训练入口为 `examples/wandb_long_mem_akt_train.py`。
+当前只保留 E1：有历史块时输出 `sigmoid(AKT_logit + residual_logit)`，不使用预测门控。首个有效块使用 AKT；非有限残差回退到 AKT。
+
+## 数据与训练
+
+采用标准 pykt fold 划分：指定 fold 为 valid，其余训练 fold 全部为 train，原始测试文件中 fold=-1 为 test。按学生隔离，无额外数据子集。
+
+一个训练命令内部先训练 AKT（valid AUC 选择 checkpoint），再冻结 AKT，训练长期残差（valid logloss 选择 checkpoint）。两个阶段共用 train/valid，`epochs` 为每阶段最多轮数，连续 10 轮无改善早停。保留 E1 原训练语义，未改成联合训练。test 只在显式评估时读取用于预测。
+
+## 记忆与残差
+
+每名学生独立初始化 Value memory，共享 Key 槽；完整轨迹按连续非重叠块处理。块内 AKT 保持严格因果预测，整块读取进入该块时的记忆，观察完该块后才写入。
+
+残差头输入为归一化问题表示、短期表示、长期读取表示及 AKT logit。最后一层零初始化。长期写入保留因果编码、时间衰减、erase/add 更新；这些写入机制不属于已删除的预测门控。
+
+TBPTT 默认跨 2 块，残差训练要求至少 2 块；组间截断并重放边界写入，让后续块损失监督写入器。每批一名学生，避免轨迹或状态混用。
+
+默认 `score_protocol=legacy` 保留 pykt 原分段计分掩码；`student` 按完整学生轨迹计分，跳过第一个交互。两种协议不要直接混比。
+
+## 使用
+
+在 `examples` 目录运行：
 
 ```bash
-cd examples
-
-# 自动完成学生划分、基线训练、候选训练、收益头训练和校准
-PYTHONPATH=.. python wandb_long_mem_akt_train.py --stage train \
-  --dataset_name bridge2algebra2006 --fold 0 --block_size 200 \
-  --epochs 20 --output saved_model/long_mem_akt_v2
-
-# 评估最终模型，导出指标和每名学生的预测
-PYTHONPATH=.. python wandb_long_mem_akt_train.py --stage evaluate \
-  --source saved_model/long_mem_akt_v2/model --block_size 200 \
-  --output saved_model/long_mem_akt_v2/test
+PYTHONPATH=.. python wandb_long_mem_akt_train.py --dataset_name bridge2algebra2006 --fold 0 --block_size 200 --epochs 20 --output saved_model/long_mem_e1
+PYTHONPATH=.. python wandb_long_mem_akt_train.py --stage evaluate --source saved_model/long_mem_e1 --block_size 200 --output saved_model/long_mem_e1_test
+PYTHONPATH=.. python evaluate_long_mem_akt_ablation.py --source saved_model/long_mem_e1 --output saved_model/long_mem_e1_comparison
 ```
 
-默认 CPU，使用 GPU 时加 `--device cuda`。输出目录必须尚不存在。
-模型保存于 `model/qid_model.ckpt`；评估结果为 `test/metrics.json` 和 `test/student_block_predictions.csv`。
-`base/candidate/benefit` 是同一个模型的训练阶段，不是旧模型选项。
-详细实现见 [实现说明](docs/long_mem_akt_implementation_cn.md)。
+默认 CPU，GPU 加 `--device cuda`。输出目录必须尚不存在。模型直接保存在输出目录的 `qid_model.ckpt`，配套 `config.json`、`roles.json`、`long_mem_manifest.json` 和训练日志，不再生成多阶段子目录。
 
-一键消融对比（在 `examples` 目录执行，使用已训练的同一份模型）：
+也支持标准预测入口 `wandb_predict.py --save_dir saved_model/long_mem_e1 --use_wandb 0`。训练保留专用入口，以自动完成 E1 的两步优化和学生级记忆处理，内部复用 pykt `train_model`。
 
-```bash
-PYTHONPATH=.. python evaluate_long_mem_akt_ablation.py \
-  --source saved_model/long_mem_akt_v2/model \
-  --output saved_model/long_mem_akt_v2/ablations
-```
+消融仅比较同一 checkpoint 的 E0（冻结 AKT）与 E1（完整残差），输出 `metrics.json` 和两份预测 CSV。旧选择性模型 checkpoint 不兼容，请重新训练。
 
-自动对比 E0（AKT 基线）、E1（完整长期残差）、E2（不确定性门控）、E3（双门控）。
-分块、MC 设置和计分协议自动读取 checkpoint。默认复用各自校准结果；
-加 `--recalibrate` 仅用 calibration 学生重新校准 E2/E3，不使用测试标签选参数。
-结果包含 `summary.csv`、`summary.md`、`metrics.json`、`students.csv` 和四组逐条预测 CSV。
-脚本校验目标/计分掩码与基线预测一致，不修改来源模型。GPU 使用 `--device cuda`。
+详细说明见 [实现说明](docs/long_mem_akt_implementation_cn.md)。
 
 ## Citation
 

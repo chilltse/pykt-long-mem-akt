@@ -195,7 +195,7 @@ def load_model(model_name, model_config, data_config, emb_type, ckpt_path, datas
         from .long_mem_akt_workflow import verify_artifact
         config, _, _ = verify_artifact(ckpt_path, model_config)
         if config["data_config"] != data_config:
-            raise ValueError("Evaluation data configuration differs from selective artifact")
+            raise ValueError("Evaluation data configuration differs from saved artifact")
     model = init_model(model_name, model_config, data_config, emb_type, dataset_name)
     net = torch.load(os.path.join(ckpt_path, emb_type+"_model.ckpt"))
     model.load_state_dict(net)

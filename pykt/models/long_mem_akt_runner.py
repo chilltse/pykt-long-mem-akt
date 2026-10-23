@@ -7,10 +7,9 @@ import torch.nn.functional as F
 from sklearn import metrics
 
 
-SELECTIVE_COLUMNS = ["base_probability", "candidate_probability", "short_uncertainty",
-                     "predicted_gain", "alpha", "residual_logit", "has_history",
-                     "candidate_evaluated", "intervention", "fallback_reason"]
-FALLBACK_REASONS = ["none", "no_history", "low_uncertainty", "insufficient_gain", "nonfinite"]
+RESIDUAL_COLUMNS = ["base_probability", "residual_logit", "has_history",
+                    "residual_applied", "fallback_reason"]
+FALLBACK_REASONS = ["none", "no_history", "nonfinite"]
 
 
 def _uid(raw):
@@ -56,7 +55,7 @@ def train_long_mem_akt(model, loader, optimizer, grad_clip=5.0):
     prediction loss supervises writer parameters without reusing an old graph.
     """
     if model.phase == "inference":
-        raise ValueError("Train candidate and benefit separately, then calibrate for inference")
+        raise ValueError("Set stage to base or candidate before training")
     if model.phase == "candidate":
         model.set_stage("candidate")
     model.train()
@@ -123,7 +122,7 @@ def evaluate_long_mem_akt(model, loader, save_path="", student_id=None):
     started = time.perf_counter()
     ys, ps, records = [], [], []
     residual = model.phase != "base"
-    bases, alphas, reasons, mc_seconds = [], [], [], 0.
+    bases, alphas, reasons = [], [], []
     slot_counts, changes = [], []
     errors = {"block_start": [], "other": [], "prior_block_same_kc": []}
     events, timestamp_blocks, event_distance_blocks = 0, 0, 0
@@ -146,9 +145,8 @@ def evaluate_long_mem_akt(model, loader, save_path="", student_id=None):
             events += int(block["valid"].sum())
             if residual:
                 bases.extend(cache["base_probability"][select].cpu().tolist())
-                alphas.extend(cache["alpha"][select].cpu().tolist())
+                alphas.extend(cache["residual_applied"][select].cpu().tolist())
                 reasons.extend(cache["fallback_reason"][select].cpu().tolist())
-                mc_seconds += cache["mc_seconds"]
             seen_in_block = set()
             for offset in range(pred.size(1)):
                 concept = int(block["cseqs"][0, offset])
@@ -166,7 +164,7 @@ def evaluate_long_mem_akt(model, loader, save_path="", student_id=None):
                                     float(block["rseqs"][0, offset]), float(pred[0, offset]),
                                     bool(select[0, offset]), model.score_protocol])
                     if residual:
-                        for key in SELECTIVE_COLUMNS:
+                        for key in RESIDUAL_COLUMNS:
                             value = cache[key][0, offset].item()
                             if key == "fallback_reason":
                                 value = FALLBACK_REASONS[value]
@@ -186,7 +184,7 @@ def evaluate_long_mem_akt(model, loader, save_path="", student_id=None):
         with open(save_path, "w", newline="") as handle:
             writer = csv.writer(handle)
             writer.writerow(["uid", "block", "position", "target", "probability", "scored", "protocol"]
-                            + (SELECTIVE_COLUMNS if residual else []))
+                            + (RESIDUAL_COLUMNS if residual else []))
             writer.writerows(records)
     if not len(ys):
         raise ValueError("No selected labels to evaluate (check student_id / scoring masks)")
@@ -215,13 +213,10 @@ def evaluate_long_mem_akt(model, loader, save_path="", student_id=None):
                            logloss_change=float(diagnostics["logloss"]-metrics.log_loss(ys, bases, labels=[0, 1])),
                            intervention_brier_change=float(difference[active].mean()) if active.any() else None,
                            intervention_logloss_change=subset_logloss,
-                           intervention_rate=float(active.mean()), mean_alpha=float(alphas.mean()),
+                           intervention_rate=float(active.mean()), residual_fraction=float(alphas.mean()),
                            mean_probability_change=float(np.abs(ps-bases).mean()),
                            changed_probability_count=int((ps != bases).sum()),
-                           alpha_quantiles=np.quantile(alphas, [0, .25, .5, .75, 1]).tolist(),
-                           low_uncertainty_fraction=float((reasons == 2).mean()),
-                           insufficient_gain_fraction=float((reasons == 3).mean()),
-                           numerical_fallback_count=int((reasons == 4).sum()), mc_seconds=mc_seconds,
+                           numerical_fallback_count=int((reasons == 2).sum()),
                            wrong_to_right=int((((bases >= .5) != ys) & ((ps >= .5) == ys)).sum()),
                            right_to_wrong=int((((bases >= .5) == ys) & ((ps >= .5) != ys)).sum()))
     for subset, values in errors.items():
