@@ -7,6 +7,16 @@ import torch.nn.functional as F
 from sklearn import metrics
 
 
+SELECTIVE_COLUMNS = ["base_probability", "candidate_probability", "short_uncertainty",
+                     "predicted_gain", "alpha", "residual_logit", "has_history",
+                     "candidate_evaluated", "intervention", "fallback_reason"]
+FALLBACK_REASONS = ["none", "no_history", "low_uncertainty", "insufficient_gain", "nonfinite"]
+
+
+def _uid(raw):
+    return str(raw["uid"][0]) if isinstance(raw["uid"], (list, tuple)) else str(raw["uid"])
+
+
 def _student(data, device):
     if data["rseqs"].ndim != 2 or data["rseqs"].size(0) != 1:
         raise ValueError("Student runner requires batch_size=1; never flatten different students together")
@@ -45,6 +55,10 @@ def train_long_mem_akt(model, loader, optimizer, grad_clip=5.0):
     optimized.  The next group calls ``write`` again, so that next group's
     prediction loss supervises writer parameters without reusing an old graph.
     """
+    if model.phase == "inference":
+        raise ValueError("Train candidate and benefit separately, then calibrate for inference")
+    if model.phase == "candidate":
+        model.set_stage("candidate")
     model.train()
     losses = []
     writer_norms, encoder_norms = [], []
@@ -53,6 +67,7 @@ def train_long_mem_akt(model, loader, optimizer, grad_clip=5.0):
         student = _student(raw, device)
         memory = model.initial_memory(1, device)
         pending = None
+        completed_valid_blocks = 0
         blocks = list(_blocks(student, model.block_size))
         for group_start in range(0, len(blocks), model.tbptt_blocks):
             group = blocks[group_start:group_start + model.tbptt_blocks]
@@ -63,13 +78,16 @@ def train_long_mem_akt(model, loader, optimizer, grad_clip=5.0):
             next_pending = None
             for pos, (absolute_start, block) in enumerate(group):
                 pred, cache = model.predict_block(block["cseqs"].long(), block["qseqs"].long(),
-                                                  block["rseqs"], block["valid"], memory)
+                                                  block["rseqs"], block["valid"], memory,
+                                                  has_history=completed_valid_blocks > 0,
+                                                  uid=_uid(raw), block_index=absolute_start//model.block_size)
                 select = _select(model, block, absolute_start)
                 count = select.sum()
                 block_loss = F.binary_cross_entropy_with_logits(cache["logits"][select], block["rseqs"][select], reduction="sum")
                 total = total + block_loss + cache["reg_loss"]
                 nlabels = nlabels + count
                 summary = model.summarize(block["rseqs"], block["valid"], block["tseqs"], cache)
+                completed_valid_blocks += int(block["valid"].any())
                 if pos == len(group) - 1:
                     next_pending = {"memory": memory, "summary": summary}
                 else:
@@ -77,11 +95,12 @@ def train_long_mem_akt(model, loader, optimizer, grad_clip=5.0):
             optimizer.zero_grad(set_to_none=True)
             if nlabels:
                 loss = total / nlabels
-                loss.backward()
-                writer_norms.append(_grad_norm([model.erase, model.add]))
-                encoder_norms.append(_grad_norm([model.write_encoder, model.write_z]))
-                torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
-                optimizer.step()
+                if loss.requires_grad:
+                    loss.backward()
+                    writer_norms.append(_grad_norm([model.erase, model.add]))
+                    encoder_norms.append(_grad_norm([model.write_encoder, model.write_z]))
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+                    optimizer.step()
                 losses.append(float(loss.detach().cpu()))
             # Truncate only between groups; next group replays its boundary write.
             pending = {"memory": next_pending["memory"].detach().clone(),
@@ -103,24 +122,33 @@ def evaluate_long_mem_akt(model, loader, save_path="", student_id=None):
         torch.cuda.reset_peak_memory_stats(device)
     started = time.perf_counter()
     ys, ps, records = [], [], []
-    gates, slot_counts, changes = [], [], []
+    residual = model.phase != "base"
+    bases, alphas, reasons, mc_seconds = [], [], [], 0.
+    slot_counts, changes = [], []
     errors = {"block_start": [], "other": [], "prior_block_same_kc": []}
     events, timestamp_blocks, event_distance_blocks = 0, 0, 0
     for raw in loader:
-        uid = str(raw["uid"][0]) if isinstance(raw["uid"], (list, tuple)) else str(raw["uid"])
+        uid = _uid(raw)
         if student_id is not None and uid != str(student_id):
             continue
         student = _student(raw, device)
         memory = model.initial_memory(1, device)
         previous_concepts = set()
+        completed_valid_blocks = 0
         for absolute_start, block in _blocks(student, model.block_size):
             pred, cache = model.predict_block(block["cseqs"].long(), block["qseqs"].long(),
-                                              block["rseqs"], block["valid"], memory)
+                                              block["rseqs"], block["valid"], memory,
+                                              has_history=completed_valid_blocks > 0,
+                                              uid=uid, block_index=absolute_start//model.block_size)
             select = _select(model, block, absolute_start)
             ys.extend(block["rseqs"][select].cpu().tolist())
             ps.extend(pred[select].cpu().tolist())
             events += int(block["valid"].sum())
-            gates.extend(cache["gate"][block["valid"]].flatten().cpu().tolist())
+            if residual:
+                bases.extend(cache["base_probability"][select].cpu().tolist())
+                alphas.extend(cache["alpha"][select].cpu().tolist())
+                reasons.extend(cache["fallback_reason"][select].cpu().tolist())
+                mc_seconds += cache["mc_seconds"]
             seen_in_block = set()
             for offset in range(pred.size(1)):
                 concept = int(block["cseqs"][0, offset])
@@ -137,6 +165,14 @@ def evaluate_long_mem_akt(model, loader, save_path="", student_id=None):
                     records.append([uid, absolute_start//model.block_size, absolute_start+offset,
                                     float(block["rseqs"][0, offset]), float(pred[0, offset]),
                                     bool(select[0, offset]), model.score_protocol])
+                    if residual:
+                        for key in SELECTIVE_COLUMNS:
+                            value = cache[key][0, offset].item()
+                            if key == "fallback_reason":
+                                value = FALLBACK_REASONS[value]
+                            elif isinstance(value, float) and not np.isfinite(value):
+                                value = ""
+                            records[-1].append(value)
             summary = model.summarize(block["rseqs"], block["valid"], block["tseqs"], cache)
             timestamp_blocks += int(summary["uses_timestamps"].sum())
             event_distance_blocks += int((~summary["uses_timestamps"] & summary["has_valid"]).sum())
@@ -144,11 +180,13 @@ def evaluate_long_mem_akt(model, loader, save_path="", student_id=None):
             new_memory = model.write(memory, summary)
             changes.append(float((new_memory - memory).norm()))
             memory = new_memory
+            completed_valid_blocks += int(block["valid"].any())
     ys, ps = np.asarray(ys), np.asarray(ps)
     if save_path:
         with open(save_path, "w", newline="") as handle:
             writer = csv.writer(handle)
-            writer.writerow(["uid", "block", "position", "target", "probability", "scored", "protocol"])
+            writer.writerow(["uid", "block", "position", "target", "probability", "scored", "protocol"]
+                            + (SELECTIVE_COLUMNS if residual else []))
             writer.writerows(records)
     if not len(ys):
         raise ValueError("No selected labels to evaluate (check student_id / scoring masks)")
@@ -161,11 +199,31 @@ def evaluate_long_mem_akt(model, loader, save_path="", student_id=None):
                    "brier": float(np.mean((ys-ps)**2)),
                    "interactions_per_second": events / (time.perf_counter()-started),
                    "peak_cuda_bytes": torch.cuda.max_memory_allocated(device) if device.type == "cuda" else 0,
-                   "gate_quantiles": np.quantile(gates, [0, .25, .5, .75, 1]).tolist(),
                    "slot_access_fraction": (counts/counts.sum()).tolist(),
                    "memory_update_norm": float(np.mean(changes)),
                    "time_weight_enabled": model.time_weight,
                    "timestamp_blocks": timestamp_blocks, "event_distance_blocks": event_distance_blocks}
+    if residual:
+        bases, alphas, reasons = np.asarray(bases), np.asarray(alphas), np.asarray(reasons)
+        active = alphas > 0
+        difference = (ys-ps)**2 - (ys-bases)**2
+        subset_logloss = (metrics.log_loss(ys[active], ps[active], labels=[0, 1])
+                          - metrics.log_loss(ys[active], bases[active], labels=[0, 1])) if active.any() else None
+        diagnostics.update(base_brier=float(np.mean((ys-bases)**2)),
+                           base_logloss=metrics.log_loss(ys, bases, labels=[0, 1]),
+                           brier_change=float(difference.mean()),
+                           logloss_change=float(diagnostics["logloss"]-metrics.log_loss(ys, bases, labels=[0, 1])),
+                           intervention_brier_change=float(difference[active].mean()) if active.any() else None,
+                           intervention_logloss_change=subset_logloss,
+                           intervention_rate=float(active.mean()), mean_alpha=float(alphas.mean()),
+                           mean_probability_change=float(np.abs(ps-bases).mean()),
+                           changed_probability_count=int((ps != bases).sum()),
+                           alpha_quantiles=np.quantile(alphas, [0, .25, .5, .75, 1]).tolist(),
+                           low_uncertainty_fraction=float((reasons == 2).mean()),
+                           insufficient_gain_fraction=float((reasons == 3).mean()),
+                           numerical_fallback_count=int((reasons == 4).sum()), mc_seconds=mc_seconds,
+                           wrong_to_right=int((((bases >= .5) != ys) & ((ps >= .5) == ys)).sum()),
+                           right_to_wrong=int((((bases >= .5) == ys) & ((ps >= .5) != ys)).sum()))
     for subset, values in errors.items():
         diagnostics[subset+"_count"] = len(values)
         diagnostics[subset+"_brier"] = float(np.mean(values)) if values else None

@@ -11,6 +11,12 @@ def read_data_from_csv(read_file, write_file):
     stares = []
 
     df = pd.read_table(read_file, low_memory=False)
+
+    # 只保留前 60 个学生的全部记录
+    # first_60_students = df["Anon Student Id"].dropna().drop_duplicates().head(60)
+    # df = df[df["Anon Student Id"].isin(first_60_students)].copy()
+
+
     #concat problem name & step_name
     df["Problem Name"] = df["Problem Name"].apply(replace_text)
     df["Step Name"] = df["Step Name"].apply(replace_text)

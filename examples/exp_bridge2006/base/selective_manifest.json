@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "stage": "base",
+  "weights_sha256": "d04d8bcee3f762d386117aaaa7da27b62bf92976f5324af33ffb977aad036ce8",
+  "config_sha256": "68bfbb1db47b80ecb8087458e9b6b93af5a0067c1d9397a5e6530adc39b4bb83",
+  "roles_sha256": "7c715987fbdd3de885928466ca989a55c1db66172de6a365999d238fad37fd00",
+  "provenance": {
+    "training": {
+      "seed": 42,
+      "epochs": 7,
+      "learning_rate": 0.001,
+      "selection": "dev AUC"
+    }
+  },
+  "mc_scope": "AKT nn.Dropout only",
+  "seed_strategy": "sha256(mc_seed:uid:block_index)",
+  "calibration_report": null
+}

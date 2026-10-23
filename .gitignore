@@ -5,6 +5,7 @@ examples/pkls/
 examples/pred_wandbs/
 examples/saved_model/
 examples/start_predict.sh
+data/bridge2algebra2006_small_chunk/
 examples/wandb/
 dist/
 *.egg-info/

@@ -15,19 +15,14 @@ with open("../configs/wandb.json") as fin:
     wandb_config = json.load(fin)
 
 def main(params):
-    if params['use_wandb'] ==1:
-        import wandb
-        os.environ['WANDB_API_KEY'] = wandb_config["api_key"]
-        wandb.init(project="wandb_predict")
-
     save_dir, batch_size, fusion_type = params["save_dir"], params["bz"], params["fusion_type"].split(",")
 
     with open(os.path.join(save_dir, "config.json")) as fin:
         config = json.load(fin)
+        if config['params']['model_name'] == 'long_mem_akt':
+            raise ValueError("Use wandb_long_mem_akt_train.py --stage evaluate; the old LongMemAKT prediction CLI has been removed")
         model_config = copy.deepcopy(config["model_config"])
         for remove_item in ['use_wandb','learning_rate','add_uuid','l2','num_epochs','batch_size','weight_decay']:
-            if config['params']['model_name'] == 'long_mem_akt' and remove_item == 'l2':
-                continue
             if remove_item in model_config:
                 del model_config[remove_item]    
         trained_params = config["params"]
@@ -37,6 +32,11 @@ def main(params):
             train_config = config["train_config"]
             seq_len = train_config["seq_len"]
             model_config["seq_len"] = seq_len   
+
+    if params['use_wandb'] == 1:
+        import wandb
+        os.environ['WANDB_API_KEY'] = wandb_config["api_key"]
+        wandb.init(project="wandb_predict")
 
     with open("../configs/data_config.json") as fin:
         curconfig = copy.deepcopy(json.load(fin))
@@ -67,17 +67,6 @@ def main(params):
     print(f"data_config: {data_config}")
 
     model = load_model(model_name, model_config, data_config, emb_type, save_dir)
-
-    if model_name == "long_mem_akt":
-        from pykt.models.long_mem_akt_runner import evaluate_long_mem_akt
-        auc, acc, diagnostics = evaluate_long_mem_akt(
-            model, test_loader, save_path=os.path.join(save_dir, "student_block_predictions.csv"),
-            student_id=params.get("student_id"))
-        results = dict(testauc=auc, testacc=acc, **diagnostics)
-        print(f"Student-ordered nonoverlapping blocks: {results}")
-        if params['use_wandb'] == 1:
-            wandb.log(results)
-        return results
 
     save_test_path = os.path.join(save_dir, model.emb_type+"_test_predictions.txt")
 
@@ -164,7 +153,6 @@ if __name__ == "__main__":
     parser.add_argument("--save_dir", type=str, default="saved_model")
     parser.add_argument("--fusion_type", type=str, default="early_fusion,late_fusion")
     parser.add_argument("--use_wandb", type=int, default=1)
-    parser.add_argument("--student_id", default=None, help="LongMemAKT: evaluate one original student UID")
 
     args = parser.parse_args()
     print(args)

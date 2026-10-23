@@ -86,6 +86,44 @@ The hyper parameter tunning results of our experiments about all the DLKT models
 31. MoCKT: : Mixture of Convolutions for Knowledge Tracing
 32. DenoiseKT: Denoised Attention and Question-Augmented Representations for Knowledge Tracing
 
+## LongMemAKT
+
+现有 `long_mem_akt` 已完整替换为选择性长期修正模型。旧四模式、旧参数和旧 checkpoint 不再支持。
+唯一训练入口为 `examples/wandb_long_mem_akt_train.py`。
+
+```bash
+cd examples
+
+# 自动完成学生划分、基线训练、候选训练、收益头训练和校准
+PYTHONPATH=.. python wandb_long_mem_akt_train.py --stage train \
+  --dataset_name bridge2algebra2006 --fold 0 --block_size 200 \
+  --epochs 20 --output saved_model/long_mem_akt_v2
+
+# 评估最终模型，导出指标和每名学生的预测
+PYTHONPATH=.. python wandb_long_mem_akt_train.py --stage evaluate \
+  --source saved_model/long_mem_akt_v2/model --block_size 200 \
+  --output saved_model/long_mem_akt_v2/test
+```
+
+默认 CPU，使用 GPU 时加 `--device cuda`。输出目录必须尚不存在。
+模型保存于 `model/qid_model.ckpt`；评估结果为 `test/metrics.json` 和 `test/student_block_predictions.csv`。
+`base/candidate/benefit` 是同一个模型的训练阶段，不是旧模型选项。
+详细实现见 [实现说明](docs/long_mem_akt_implementation_cn.md)。
+
+一键消融对比（在 `examples` 目录执行，使用已训练的同一份模型）：
+
+```bash
+PYTHONPATH=.. python evaluate_long_mem_akt_ablation.py \
+  --source saved_model/long_mem_akt_v2/model \
+  --output saved_model/long_mem_akt_v2/ablations
+```
+
+自动对比 E0（AKT 基线）、E1（完整长期残差）、E2（不确定性门控）、E3（双门控）。
+分块、MC 设置和计分协议自动读取 checkpoint。默认复用各自校准结果；
+加 `--recalibrate` 仅用 calibration 学生重新校准 E2/E3，不使用测试标签选参数。
+结果包含 `summary.csv`、`summary.md`、`metrics.json`、`students.csv` 和四组逐条预测 CSV。
+脚本校验目标/计分掩码与基线预测一致，不修改来源模型。GPU 使用 `--device cuda`。
+
 ## Citation
 
 We now have a [paper](https://arxiv.org/abs/2206.11460?context=cs.CY) you can cite for the our pyKT library:

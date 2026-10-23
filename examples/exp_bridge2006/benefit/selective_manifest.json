@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "stage": "benefit",
+  "weights_sha256": "5cd633a1416cc3215c07ae9bab11e3a058094abe1bc1e846d47fb6c86f154a98",
+  "config_sha256": "79ff8cd63fb9f50758514a6f469eef83884ae81b7a8071ea55a48bd397da3a05",
+  "roles_sha256": "7c715987fbdd3de885928466ca989a55c1db66172de6a365999d238fad37fd00",
+  "provenance": {
+    "training": {
+      "seed": 42,
+      "epochs": 7,
+      "learning_rate": 0.001,
+      "selection": "dev logloss"
+    },
+    "base_sha256": "d04d8bcee3f762d386117aaaa7da27b62bf92976f5324af33ffb977aad036ce8",
+    "candidate_sha256": "08aaf3ccc3466babd722a36b0cc86eca604fe077762b8d7a3b22c936ae0fd877"
+  },
+  "mc_scope": "AKT nn.Dropout only",
+  "seed_strategy": "sha256(mc_seed:uid:block_index)",
+  "calibration_report": null
+}

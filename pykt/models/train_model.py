@@ -299,6 +299,7 @@ def model_forward(model, data, rel=None):
 def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, test_loader=None, test_window_loader=None, save_model=False, data_config=None, fold=None):
     testauc = testacc = window_testauc = window_testacc = validauc = validacc = -1
     max_auc, best_epoch = 0, -1
+    best_candidate_logloss = float("inf")
     train_step = 0
 
     rel = None
@@ -327,7 +328,10 @@ def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, t
                                    auc=auc if np.isfinite(auc) else None, accuracy=acc,
                                    **model.last_train_diagnostics, **diagnostics), handle)
                     handle.write("\n")
-            if best_epoch == -1 or auc > max_auc + 1e-3:
+            candidate = model.phase == "candidate"
+            improved = (diagnostics["logloss"] < best_candidate_logloss - 1e-6) if candidate else (auc > max_auc + 1e-3)
+            if best_epoch == -1 or improved:
+                best_candidate_logloss = diagnostics["logloss"]
                 if save_model:
                     torch.save(model.state_dict(), os.path.join(ckpt_path, model.emb_type+"_model.ckpt"))
                 max_auc, best_epoch, validauc, validacc = auc, i, auc, acc
