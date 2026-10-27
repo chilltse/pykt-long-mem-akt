@@ -1,0 +1,128 @@
+{
+  "bank_bytes_peak": 6324096,
+  "index_bytes_peak": 0,
+  "refreshes": 0,
+  "fallbacks": 0,
+  "searches": 0,
+  "index_update_seconds": 0.0,
+  "index_transfer_seconds": 0.0,
+  "index_search_seconds": 0.0,
+  "seconds": 18.906595977023244,
+  "blocks": 93,
+  "optimizer_steps": 0,
+  "interactions": 17335,
+  "scored_labels": 17242,
+  "block_seconds_mean": 0.20282027640089553,
+  "cpu_peak_rss_bytes": 528580608,
+  "cuda_peak_allocated": 0,
+  "cuda_peak_reserved": 0,
+  "feature_version": 0,
+  "diagnostics": {
+    "projection_seconds": 1.0195234692655504,
+    "retrieval_seconds": 1.9608979087788612,
+    "attention_seconds": 2.7524736581835896,
+    "remote_mass_sum": 0.0,
+    "query_heads": 0.0,
+    "remote_hits": 0.0,
+    "candidate_age_sum": 0.0,
+    "remote_candidates": 0.0,
+    "feature_age_sum": 0.0,
+    "recall_sum": 0.0,
+    "recall_rows": 0.0,
+    "retained_mass_sum": 0.0,
+    "dense_output_l2_sum": 0.0,
+    "dense_rows": 0.0,
+    "rescore_abs_sum": 0.0,
+    "index_age_sum": 0.0,
+    "indexed_candidates": 0.0
+  },
+  "backend": "exact",
+  "memory_mode": "retrieval",
+  "diagnostic_oracle_enabled": false,
+  "faiss_version": "1.7.3",
+  "effective_backend": "exact",
+  "gate": [
+    0.0596592016518116,
+    0.04595894739031792,
+    -0.005415210500359535,
+    0.045736152678728104,
+    -0.0020875586196780205,
+    0.04437790811061859,
+    -0.01922159641981125,
+    -0.0010739469435065985
+  ],
+  "dense_oracle_semantics": "All remote cached features in the last retriever memory branch; not full-history AKT",
+  "dense_attention_diagnostics_available": false,
+  "architecture_variant": "v2_last_retriever_residual",
+  "training_stage": "last_layer",
+  "memory_decay_mode": "legacy_mul",
+  "torch_version": "1.13.1+cu117",
+  "component_timing": "synchronized",
+  "retrieval_quality": {
+    "remote_attention_mass_mean": null,
+    "remote_read_hit_fraction": null,
+    "candidate_age_mean": null,
+    "feature_age_mean": null,
+    "raw_ip_recall_at_k": null,
+    "retained_dense_attention_mass": null,
+    "dense_output_l2_mean": null,
+    "index_age_mean": null,
+    "index_rescore_absolute_difference_mean": null
+  },
+  "fallback_fraction": 0.0,
+  "count": 17242,
+  "logloss": 0.386648017099099,
+  "brier": 0.11869632773742979,
+  "accuracy": 0.8393457835517921,
+  "auc": 0.7917969663085672,
+  "strata": {
+    "history_length_0_200": {
+      "count": 2239,
+      "logloss": 0.35511311433593273,
+      "accuracy": 0.8414470745868692,
+      "auc": 0.8095162237188734
+    },
+    "history_length_200_400": {
+      "count": 2189,
+      "logloss": 0.35712046976301776,
+      "accuracy": 0.8670625856555505,
+      "auc": 0.7215648220028834
+    },
+    "history_length_400_800": {
+      "count": 3638,
+      "logloss": 0.36021307313458295,
+      "accuracy": 0.8702583837273227,
+      "auc": 0.7181186668777707
+    },
+    "history_length_800_inf": {
+      "count": 9176,
+      "logloss": 0.4118673691640861,
+      "accuracy": 0.8199651264167394,
+      "auc": 0.8107276504318379
+    },
+    "kc_gap_0_200": {
+      "count": 16616,
+      "logloss": 0.38113127060682717,
+      "accuracy": 0.843343765045739,
+      "auc": 0.7925254182510202
+    },
+    "kc_gap_200_400": {
+      "count": 27,
+      "logloss": 0.5335065824395855,
+      "accuracy": 0.7407407407407407,
+      "auc": 0.9065934065934066
+    },
+    "kc_gap_400_800": {
+      "count": 16,
+      "logloss": 0.38940346920614044,
+      "accuracy": 0.8125,
+      "auc": 0.9375
+    },
+    "kc_gap_800_inf": {
+      "count": 4,
+      "logloss": 1.2335456588877902,
+      "accuracy": 0.5,
+      "auc": 1.0
+    }
+  }
+}

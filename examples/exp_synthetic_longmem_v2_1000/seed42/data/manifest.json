@@ -1,0 +1,22 @@
+{
+  "seed": 20261025,
+  "length": 1000,
+  "block_len": 200,
+  "counts": {
+    "train": 48,
+    "valid": 12,
+    "test": 24
+  },
+  "n_concepts": 48,
+  "split": "student-disjoint",
+  "return_start": 800,
+  "score_mask": "exclude every block first position",
+  "labels": "latent oracle and first-return labels are evaluation-only",
+  "response": "Bernoulli(sigmoid((mastered ? 1.8 : -1.8) + student ability - concept difficulty))",
+  "learning_probability": 0.015,
+  "sha256": {
+    "train": "dd49280faf751a2e2ee98871663fed0d6e75cf07f7ad15a3e1785b37a82b5384",
+    "valid": "bbe235337940f894148a7b4b0806271688688776f979db149b98095c92308c96",
+    "test": "124eea0933bd12852158cc122fcc0ecfc5aa1d961fa3f416479b8f7dc0b59bdc"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "arguments": {
+    "output": "/home/remote/u8016457/my_code/pykt-long-mem-akt/examples/exp_synthetic_longmem_v2_1000/seed42",
+    "length": 1000,
+    "block_len": 200,
+    "data_seed": 20261025,
+    "seeds": "42",
+    "train_students": 48,
+    "valid_students": 12,
+    "test_students": 24,
+    "pretrain_epochs": 6,
+    "finetune_epochs": 4,
+    "pretrain_lr": 0.001,
+    "finetune_lr": 0.0001,
+    "gate_lr": 0.001,
+    "threads": 1,
+    "workers": 1
+  },
+  "model": {
+    "n_question": 48,
+    "n_pid": 0,
+    "d_model": 32,
+    "n_blocks": 2,
+    "dropout": 0.1,
+    "d_ff": 64,
+    "final_fc_dim": 64,
+    "num_attn_heads": 4,
+    "block_len": 200,
+    "recent_capacity": 200,
+    "remote_capacity": 1000,
+    "remote_topk": 32,
+    "retrieval_query_chunk": 32,
+    "retrieval_memory_chunk": 256,
+    "score_protocol": "legacy",
+    "retrieval_backend": "exact"
+  },
+  "variants": {
+    "B1_akt_continue": [
+      "off",
+      "last_layer",
+      "legacy_mul"
+    ],
+    "F_recent": [
+      "recent",
+      "last_layer",
+      "legacy_mul"
+    ],
+    "F_exact": [
+      "retrieval",
+      "last_layer",
+      "legacy_mul"
+    ],
+    "F_additive": [
+      "retrieval",
+      "last_layer",
+      "log_additive"
+    ],
+    "G_exact": [
+      "retrieval",
+      "gate_only",
+      "legacy_mul"
+    ]
+  },
+  "commit": "9d1046a3ca0e013009530fbe252bea12390fbdf1",
+  "torch_version": "1.13.1+cu117",
+  "device": "cpu",
+  "note": "working-tree implementation; fixed dataset across training seeds"
+}

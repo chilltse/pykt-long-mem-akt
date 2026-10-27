@@ -1,0 +1,3 @@
+# Optional ANN backend. Verified in this repository with Python 3.7, CPU Faiss 1.7.3.
+# Exact retrieval does not import or require Faiss.
+faiss-cpu==1.7.3

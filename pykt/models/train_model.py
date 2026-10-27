@@ -318,6 +318,19 @@ def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, t
     if model.model_name=='lpkt':
         scheduler = torch.optim.lr_scheduler.StepLR(opt, 10, gamma=0.5)
     for i in range(1, num_epochs + 1):
+        if model.model_name == "long_mem_topk_akt":
+            from .long_mem_topk_akt_runner import train_long_mem_topk_akt, evaluate_long_mem_topk_akt
+            loss_mean = train_long_mem_topk_akt(model, train_loader, opt)
+            auc, acc, diagnostics = evaluate_long_mem_topk_akt(model, valid_loader)
+            if best_epoch == -1 or auc > max_auc + 1e-3:
+                max_auc, best_epoch, validauc, validacc = auc, i, auc, acc
+                if save_model:
+                    os.makedirs(ckpt_path, exist_ok=True)
+                    torch.save(model.state_dict(), os.path.join(ckpt_path, model.emb_type+"_model.ckpt"))
+            print(f"Epoch {i}: loss={loss_mean:.6f}, validauc={auc:.6f}, logloss={diagnostics['logloss']:.6f}")
+            if i - best_epoch >= 10:
+                break
+            continue
         if model.model_name == "long_mem_akt":
             loss_mean = train_long_mem_akt(model, train_loader, opt)
             auc, acc, diagnostics = evaluate_long_mem_akt(model, valid_loader)

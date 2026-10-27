@@ -86,6 +86,14 @@ The hyper parameter tunning results of our experiments about all the DLKT models
 31. MoCKT: : Mixture of Convolutions for Knowledge Tracing
 32. DenoiseKT: Denoised Attention and Question-Augmented Representations for Knowledge Tracing
 
+## LongMemTopKAKT
+
+新增 `long_mem_topk_akt`：保留原 AKT 参数和预测头，所有 attention 层加入近期缓存，仅 Knowledge Retriever 加入远期 Top-k 检索，支持 Exact 与 HNSW inner-product。与现有 `long_mem_akt` 独立。
+
+训练入口：`examples/wandb_long_mem_topk_akt_train.py`（从原 AKT checkpoint 联合微调）；同条件消融入口：`examples/evaluate_long_mem_topk_akt_ablation.py`（默认比较 AKT / recent / exact / HNSW，统一 train/valid/test 和计分位置）。
+
+运行命令、因果约束、近似边界和成本解释见 [实现说明](docs/long_mem_topk_akt_implementation_cn.md)。
+
 ## LongMemAKT
 
 当前只保留 E1：有历史块时输出 `sigmoid(AKT_logit + residual_logit)`，不使用预测门控。首个有效块使用 AKT；非有限残差回退到 AKT。

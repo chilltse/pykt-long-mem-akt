@@ -21,7 +21,7 @@ def init_test_datasets(data_config, model_name, batch_size, diff_level=None, arg
     dataset_name = data_config["dataset_name"]
     print(f"model_name is {model_name}, dataset_name is {dataset_name}")
     test_question_loader, test_question_window_loader = None, None
-    if model_name == "long_mem_akt":
+    if model_name in {"long_mem_akt", "long_mem_topk_akt"}:
         test_dataset = LongMemAKTDataset(os.path.join(data_config["dpath"], data_config["test_original_file"]), data_config["input_type"], {-1}, data_config.get("maxlen", 200), data_config.get("min_seq_len", 3))
         return DataLoader(test_dataset, batch_size=1, shuffle=False), None, None, None
     elif model_name in ["dkt_forget", "bakt_time", "fa_kt", "mtkt"]:
@@ -119,7 +119,7 @@ def init_test_datasets(data_config, model_name, batch_size, diff_level=None, arg
             test_question_dataset = KTDataset(os.path.join(data_config["dpath"], data_config["test_question_file"]), data_config["input_type"], {-1}, True)
             test_question_window_dataset = KTDataset(os.path.join(data_config["dpath"], data_config["test_question_window_file"]), data_config["input_type"], {-1}, True)
 
-    loader_batch_size = 1 if model_name == "long_mem_akt" else batch_size
+    loader_batch_size = 1 if model_name in {"long_mem_akt", "long_mem_topk_akt"} else batch_size
     test_loader = DataLoader(test_dataset, batch_size=loader_batch_size, shuffle=False)
     test_window_loader = DataLoader(test_window_dataset, batch_size=loader_batch_size, shuffle=False)
     if "test_question_file" in data_config:
@@ -143,7 +143,7 @@ def init_dataset4train(dataset_name, model_name, data_config, i, batch_size, dif
     print(f"data_config:{data_config}")
     data_config = data_config[dataset_name]
     all_folds = set(data_config["folds"])
-    if model_name == "long_mem_akt":
+    if model_name in {"long_mem_akt", "long_mem_topk_akt"}:
         # One complete student per batch preserves order and isolates dynamic Value memory.
         source = os.path.join(data_config["dpath"], data_config["train_valid_original_file"])
         curvalid = LongMemAKTDataset(source, data_config["input_type"], {i}, data_config.get("maxlen", 200), data_config.get("min_seq_len", 3))
@@ -225,8 +225,8 @@ def init_dataset4train(dataset_name, model_name, data_config, i, batch_size, dif
     else:
         curvalid = KTDataset(os.path.join(data_config["dpath"], data_config["train_valid_file"]), data_config["input_type"], {i})
         curtrain = KTDataset(os.path.join(data_config["dpath"], data_config["train_valid_file"]), data_config["input_type"], all_folds - {i})
-    train_loader = DataLoader(curtrain, batch_size=1 if model_name == "long_mem_akt" else batch_size, shuffle=False)
-    valid_loader = DataLoader(curvalid, batch_size=1 if model_name == "long_mem_akt" else batch_size, shuffle=False)
+    train_loader = DataLoader(curtrain, batch_size=1 if model_name in {"long_mem_akt", "long_mem_topk_akt"} else batch_size, shuffle=False)
+    valid_loader = DataLoader(curvalid, batch_size=1 if model_name in {"long_mem_akt", "long_mem_topk_akt"} else batch_size, shuffle=False)
     
     try:
         if model_name in ["dkt_forget", "bakt_time", "fa_kt", "mtkt"]:

@@ -1,0 +1,132 @@
+{
+  "bank_bytes_peak": 272000,
+  "index_bytes_peak": 0,
+  "refreshes": 0,
+  "fallbacks": 0,
+  "searches": 0,
+  "index_update_seconds": 0.0,
+  "index_transfer_seconds": 0.0,
+  "index_search_seconds": 0.0,
+  "seconds": 25.217647452373058,
+  "blocks": 120,
+  "optimizer_steps": 0,
+  "interactions": 24000,
+  "scored_labels": 23880,
+  "block_seconds_mean": 0.208463646871193,
+  "cpu_peak_rss_bytes": 608714752,
+  "cuda_peak_allocated": 0,
+  "cuda_peak_reserved": 0,
+  "feature_version": 960,
+  "diagnostics": {
+    "projection_seconds": 2.102700639516115,
+    "retrieval_seconds": 2.4569208063185215,
+    "attention_seconds": 7.048009517136961,
+    "remote_mass_sum": 0.0,
+    "query_heads": 0.0,
+    "remote_hits": 0.0,
+    "candidate_age_sum": 0.0,
+    "remote_candidates": 0.0,
+    "feature_age_sum": 0.0,
+    "recall_sum": 0.0,
+    "recall_rows": 0.0,
+    "retained_mass_sum": 0.0,
+    "dense_output_l2_sum": 0.0,
+    "dense_rows": 0.0,
+    "rescore_abs_sum": 0.0,
+    "index_age_sum": 0.0,
+    "indexed_candidates": 0.0
+  },
+  "backend": "exact",
+  "memory_mode": "retrieval",
+  "diagnostic_oracle_enabled": false,
+  "faiss_version": "1.7.3",
+  "effective_backend": "exact",
+  "gate": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "dense_oracle_semantics": "All remote cached features in the last retriever memory branch; not full-history AKT",
+  "dense_attention_diagnostics_available": false,
+  "architecture_variant": "v2_last_retriever_residual",
+  "training_stage": "last_layer",
+  "memory_decay_mode": "legacy_mul",
+  "torch_version": "1.13.1+cu117",
+  "component_timing": "synchronized",
+  "retrieval_quality": {
+    "remote_attention_mass_mean": null,
+    "remote_read_hit_fraction": null,
+    "candidate_age_mean": null,
+    "feature_age_mean": null,
+    "raw_ip_recall_at_k": null,
+    "retained_dense_attention_mass": null,
+    "dense_output_l2_mean": null,
+    "index_age_mean": null,
+    "index_rescore_absolute_difference_mean": null
+  },
+  "fallback_fraction": 0.0,
+  "count": 23880,
+  "logloss": 0.584884432776039,
+  "brier": 0.19840191532954873,
+  "accuracy": 0.7141959798994975,
+  "auc": 0.7452489054724145,
+  "strata": {
+    "history_length_0_200": {
+      "count": 4776,
+      "logloss": 0.5951585924282381,
+      "accuracy": 0.7005862646566164,
+      "auc": 0.7448261200250343
+    },
+    "history_length_200_400": {
+      "count": 4776,
+      "logloss": 0.5743466086572925,
+      "accuracy": 0.7309463986599665,
+      "auc": 0.7518433558859694
+    },
+    "history_length_400_800": {
+      "count": 9552,
+      "logloss": 0.5757513200327352,
+      "accuracy": 0.7228852596314908,
+      "auc": 0.7315541044072963
+    },
+    "history_length_800_inf": {
+      "count": 4776,
+      "logloss": 0.6034143227291937,
+      "accuracy": 0.693676716917923,
+      "auc": 0.7318020177610883
+    },
+    "kc_gap_0_200": {
+      "count": 22032,
+      "logloss": 0.5721712994191875,
+      "accuracy": 0.7322984749455338,
+      "auc": 0.7533304469211501
+    },
+    "kc_gap_400_800": {
+      "count": 744,
+      "logloss": 0.7279051913689026,
+      "accuracy": 0.5147849462365591,
+      "auc": 0.5252317981456148
+    }
+  },
+  "subsets": {
+    "all": {
+      "count": 23880,
+      "auc": 0.7452489054724145,
+      "nll": 0.584884432776039,
+      "acc": 0.7141959798994975
+    },
+    "return_block": {
+      "count": 4776,
+      "auc": 0.7318020177610883,
+      "nll": 0.6034143227291937,
+      "acc": 0.693676716917923
+    },
+    "first_return": {
+      "count": 744,
+      "auc": 0.5252317981456148,
+      "nll": 0.7279051913689026,
+      "acc": 0.5147849462365591
+    }
+  }
+}

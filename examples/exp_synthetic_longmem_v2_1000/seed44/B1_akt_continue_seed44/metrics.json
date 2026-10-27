@@ -1,0 +1,132 @@
+{
+  "bank_bytes_peak": 0,
+  "index_bytes_peak": 0,
+  "refreshes": 0,
+  "fallbacks": 0,
+  "searches": 0,
+  "index_update_seconds": 0.0,
+  "index_transfer_seconds": 0.0,
+  "index_search_seconds": 0.0,
+  "seconds": 15.489412475377321,
+  "blocks": 120,
+  "optimizer_steps": 0,
+  "interactions": 24000,
+  "scored_labels": 23880,
+  "block_seconds_mean": 0.12730443369752417,
+  "cpu_peak_rss_bytes": 562241536,
+  "cuda_peak_allocated": 0,
+  "cuda_peak_reserved": 0,
+  "feature_version": 960,
+  "diagnostics": {
+    "projection_seconds": 0.0,
+    "retrieval_seconds": 0.0,
+    "attention_seconds": 0.0,
+    "remote_mass_sum": 0.0,
+    "query_heads": 0.0,
+    "remote_hits": 0.0,
+    "candidate_age_sum": 0.0,
+    "remote_candidates": 0.0,
+    "feature_age_sum": 0.0,
+    "recall_sum": 0.0,
+    "recall_rows": 0.0,
+    "retained_mass_sum": 0.0,
+    "dense_output_l2_sum": 0.0,
+    "dense_rows": 0.0,
+    "rescore_abs_sum": 0.0,
+    "index_age_sum": 0.0,
+    "indexed_candidates": 0.0
+  },
+  "backend": "exact",
+  "memory_mode": "off",
+  "diagnostic_oracle_enabled": false,
+  "faiss_version": "1.7.3",
+  "effective_backend": "exact",
+  "gate": [
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "dense_oracle_semantics": "All remote cached features in the last retriever memory branch; not full-history AKT",
+  "dense_attention_diagnostics_available": false,
+  "architecture_variant": "v2_last_retriever_residual",
+  "training_stage": "last_layer",
+  "memory_decay_mode": "legacy_mul",
+  "torch_version": "1.13.1+cu117",
+  "component_timing": "synchronized",
+  "retrieval_quality": {
+    "remote_attention_mass_mean": null,
+    "remote_read_hit_fraction": null,
+    "candidate_age_mean": null,
+    "feature_age_mean": null,
+    "raw_ip_recall_at_k": null,
+    "retained_dense_attention_mass": null,
+    "dense_output_l2_mean": null,
+    "index_age_mean": null,
+    "index_rescore_absolute_difference_mean": null
+  },
+  "fallback_fraction": 0.0,
+  "count": 23880,
+  "logloss": 0.5329363260442503,
+  "brier": 0.17575709884380963,
+  "accuracy": 0.755108877721943,
+  "auc": 0.8018063358589689,
+  "strata": {
+    "history_length_0_200": {
+      "count": 4776,
+      "logloss": 0.5644490747076796,
+      "accuracy": 0.7263400335008375,
+      "auc": 0.7808412080525611
+    },
+    "history_length_200_400": {
+      "count": 4776,
+      "logloss": 0.5063583397427579,
+      "accuracy": 0.7772194304857621,
+      "auc": 0.8245521448039359
+    },
+    "history_length_400_800": {
+      "count": 9552,
+      "logloss": 0.509957126212744,
+      "accuracy": 0.7755443886097152,
+      "auc": 0.8042848875024827
+    },
+    "history_length_800_inf": {
+      "count": 4776,
+      "logloss": 0.5739599633453257,
+      "accuracy": 0.7208961474036851,
+      "auc": 0.7687700569608882
+    },
+    "kc_gap_0_200": {
+      "count": 22032,
+      "logloss": 0.5154190033331668,
+      "accuracy": 0.7752360203340596,
+      "auc": 0.8114742758601394
+    },
+    "kc_gap_400_800": {
+      "count": 744,
+      "logloss": 0.729370451410158,
+      "accuracy": 0.5376344086021505,
+      "auc": 0.5335591600981477
+    }
+  },
+  "subsets": {
+    "all": {
+      "count": 23880,
+      "auc": 0.8018063358589689,
+      "nll": 0.5329363260442503,
+      "acc": 0.755108877721943
+    },
+    "return_block": {
+      "count": 4776,
+      "auc": 0.7687700569608882,
+      "nll": 0.5739599633453257,
+      "acc": 0.7208961474036851
+    },
+    "first_return": {
+      "count": 744,
+      "auc": 0.5335591600981477,
+      "nll": 0.729370451410158,
+      "acc": 0.5376344086021505
+    }
+  }
+}

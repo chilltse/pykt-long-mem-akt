@@ -19,6 +19,16 @@ def main(params):
 
     with open(os.path.join(save_dir, "config.json")) as fin:
         config = json.load(fin)
+        if config['params']['model_name'] == 'long_mem_topk_akt':
+            from pykt.models.long_mem_topk_akt_workflow import load_artifact
+            from pykt.models.long_mem_akt_workflow import role_loader, write_json
+            from pykt.models.long_mem_topk_akt_runner import evaluate_long_mem_topk_akt
+            model, _, roles = load_artifact(save_dir, device)
+            _, _, report = evaluate_long_mem_topk_akt(
+                model, role_loader(roles, "test"), os.path.join(save_dir, "test_predictions.csv"))
+            write_json(os.path.join(save_dir, "test_metrics.json"), report)
+            print(report)
+            return
         if config['params']['model_name'] == 'long_mem_akt':
             from pykt.models.long_mem_akt_workflow import load_artifact, role_loader, write_json
             from pykt.models.long_mem_akt_runner import evaluate_long_mem_akt

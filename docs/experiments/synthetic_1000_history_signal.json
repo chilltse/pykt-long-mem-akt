@@ -1,0 +1,46 @@
+{
+  "results": {
+    "block_only": {
+      "all": {
+        "count": 23880,
+        "auc": 0.8202516076583166,
+        "nll": 0.5230171119731706,
+        "acc": 0.7699329983249581
+      },
+      "return_block": {
+        "count": 4776,
+        "auc": 0.8057663652471652,
+        "nll": 0.5452526359891198,
+        "acc": 0.746859296482412
+      },
+      "first_return": {
+        "count": 744,
+        "auc": 0.5,
+        "nll": 0.6931471805599453,
+        "acc": 0.5201612903225806
+      }
+    },
+    "all_history": {
+      "all": {
+        "count": 23880,
+        "auc": 0.8331060867086063,
+        "nll": 0.49794710015184607,
+        "acc": 0.7930485762144054
+      },
+      "return_block": {
+        "count": 4776,
+        "auc": 0.8498334677802867,
+        "nll": 0.47002739948742217,
+        "acc": 0.8278894472361809
+      },
+      "first_return": {
+        "count": 744,
+        "auc": 0.8449069550300741,
+        "nll": 0.47940497436087065,
+        "acc": 0.8172043010752689
+      }
+    }
+  },
+  "formula": "(past same-concept correct + 1)/(past same-concept count + 2)",
+  "note": "Fixed causal non-neural controls; no latent mastery or current/future response used."
+}

@@ -50,6 +50,10 @@ def save_cur_predict_result(dres, q, r, d, t, m, sm, p):
     return "\n".join(results)
 
 def evaluate(model, test_loader, model_name, rel=None, save_path=""):
+    if model_name == "long_mem_topk_akt":
+        from .long_mem_topk_akt_runner import evaluate_long_mem_topk_akt
+        auc, acc, _ = evaluate_long_mem_topk_akt(model, test_loader, save_path or (rel if isinstance(rel, str) else ""))
+        return auc, acc
     if model_name == "long_mem_akt":
         from .long_mem_akt_runner import evaluate_long_mem_akt
         auc, acc, diagnostics = evaluate_long_mem_akt(model, test_loader, save_path=save_path or (rel if isinstance(rel, str) else ""))
