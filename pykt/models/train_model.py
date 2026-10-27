@@ -297,6 +297,8 @@ def model_forward(model, data, rel=None):
     
 
 def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, test_loader=None, test_window_loader=None, save_model=False, data_config=None, fold=None):
+    if model.model_name == "akt-dual-window":
+        raise ValueError("Use akt_dual_window_runner.run_epoch with complete student records")
     testauc = testacc = window_testauc = window_testacc = validauc = validacc = -1
     max_auc, best_epoch = 0, -1
     best_candidate_logloss = float("inf")

@@ -44,6 +44,8 @@ def save_config(train_config, model_config, data_config, params, save_dir):
         json.dump(d, fout)
 
 def main(params):
+    if params.get("model_name") == "akt-dual-window":
+        raise ValueError("Use experiment_akt_dual_window.py: requires ordered full student sequences")
     if params.get("model_name") == "long_mem_akt":
         raise ValueError("Use wandb_long_mem_akt_train.py --stage train; the old LongMemAKT CLI has been removed")
     if "use_wandb" not in params:
