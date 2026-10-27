@@ -44,7 +44,7 @@ def main(args):
     output = Path(args.output)
     output.mkdir(parents=True, exist_ok=False)
     (output / 'config.json').write_text(json.dumps(dict(args=vars(args), model_config=model_config,
-        data_config=config, scoring='all allowed positions except first student token; boundary = first token of blocks after block 0',
+        data_config=config, attention='normalized QK sqrt(d_k); independent short/long; static head gates 0.05', scoring='all allowed positions except first student token; boundary = first token of blocks after block 0',
         optimizer='one step per student; block backward; no cache across steps'), indent=2))
     summary = []
     reference = None
@@ -54,16 +54,21 @@ def main(args):
         initial = base.state_dict()
         if args.init_checkpoint:
             initial = torch.load(args.init_checkpoint, map_location='cpu', weights_only=True)
-            base.load_state_dict(initial, strict=True)
+            validator = AKTDualWindow(**model_config)
+            validator.load_compatible_state_dict(initial)
         for variant in variants:
             torch.manual_seed(seed)
             if variant == 'akt':
                 model = AKT(**model_config)
             else:
                 model = AKTDualWindow(**model_config, block_size=args.block_size,
-                    short_window=args.short_window, long_window=0 if variant == 'short-only' else args.long_window,
-                    topk=args.topk)
-            model.load_state_dict(initial, strict=True)
+                    short_window=args.short_window, long_window=args.long_window,
+                    topk=0 if variant == 'short-only' else args.topk)
+            if isinstance(model, AKTDualWindow):
+                model.load_compatible_state_dict(initial)
+            else:
+                # Only discard validated per-layer gates when loading into original AKT.
+                model.load_state_dict({key: initial[key] for key in model.state_dict()}, strict=True)
             model.to(args.device)
             optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
             run = output / f'{variant}_seed{seed}'

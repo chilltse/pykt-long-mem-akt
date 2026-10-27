@@ -6,9 +6,11 @@ from pathlib import Path
 
 import pytest
 import torch
+import torch.nn.functional as F
+import pykt.models.akt as akt_module
 
 from pykt.models.akt import AKT
-from pykt.models.akt_dual_window import AKTDualWindow, window_masks, select_history
+from pykt.models.akt_dual_window import AKTDualWindow, window_masks, select_history, attention_branches, fuse_heads, masked_softmax
 from pykt.models.akt_dual_window_runner import run_epoch
 
 torch.set_num_threads(1)
@@ -53,13 +55,14 @@ def test_required_windows_and_topk():
 @pytest.mark.parametrize('separate', [False, True])
 @pytest.mark.parametrize('emb_type', ['qid', 'qid_pdiff'])
 @pytest.mark.parametrize('kq_same', [0, 1])
-def test_first_block_original_equivalence(separate, emb_type, kq_same):
+def test_first_block_normalized_akt_equivalence(separate, emb_type, kq_same, monkeypatch):
+    normalize_reference(monkeypatch)
     cfg = config(separate_qa=separate, emb_type=emb_type, kq_same=kq_same)
     original = AKT(**cfg).eval()
     dual = AKTDualWindow(**cfg, block_size=4, short_window=4, long_window=0).eval()
     with torch.no_grad():
         original.difficult_param.weight.normal_()
-    dual.load_state_dict(original.state_dict())
+    dual.load_compatible_state_dict(original.state_dict())
     q, r = inputs(4, 2)
     p, reg = original(q, r, q)
     actual, actual_reg = dual(q, r, q)
@@ -179,22 +182,133 @@ def test_ab_cli(tmp_path):
         folds=[0, 1], train_valid_original_file='train.csv', test_original_file='test.csv'))))
     output = tmp_path / 'ab'
     script = Path(__file__).resolve().parents[1] / 'examples/experiment_akt_dual_window.py'
-    subprocess.run([sys.executable, str(script), '--data-config', str(cfg), '--dataset-name', 'tiny',
+    command = [sys.executable, str(script), '--data-config', str(cfg), '--dataset-name', 'tiny',
         '--data-dir', str(data), '--output', str(output), '--epochs', '1', '--seeds', '42',
         '--block-size', '4', '--short-window', '4', '--long-window', '8', '--topk', '2',
         '--d-model', '16', '--d-ff', '32', '--n-blocks', '2', '--num-attn-heads', '4',
-        '--final-fc-dim', '32', '--dropout', '0'], check=True, capture_output=True, text=True)
+        '--final-fc-dim', '32', '--dropout', '0']
+    subprocess.run(command, check=True, capture_output=True, text=True)
     reports = json.loads((output / 'comparison.json').read_text())
     assert len(reports) == 3
     assert {r['overall']['count'] for r in reports} == {22}
     assert {r['boundary']['count'] for r in reports} == {4}
     assert reports[2]['long_usage']['long_selected'] > 0
     assert reports[1]['long_usage']['long_selected'] == 0
+    assert len(reports[2]['gate_values']) == 6
+    assert reports[2]['long_positions']['count'] > 0
+    assert reports[1]['long_positions']['count'] == 0
+    assert reports[2]['fraction_queries_using_long'] > 0
+    assert len(reports[2]['layer_long_usage']) == 6
+    # A gated checkpoint must still work with the same three-arm entry point.
+    resumed = command.copy()
+    resumed[resumed.index('--output') + 1] = str(tmp_path / 'resumed')
+    resumed += ['--init-checkpoint', str(output / 'akt-dual-window_seed42' / 'best.pt')]
+    subprocess.run(resumed, check=True, capture_output=True, text=True)
+    assert len(json.loads((tmp_path / 'resumed' / 'comparison.json').read_text())) == 3
 
 
-def test_cached_layers_equal_full_akt_without_truncation():
+def test_cached_layers_equal_full_normalized_akt_without_truncation(monkeypatch):
+    normalize_reference(monkeypatch)
     original = AKT(**config()).eval()
     dual = AKTDualWindow(**config(), block_size=4, short_window=16, long_window=0).eval()
-    dual.load_state_dict(original.state_dict())
+    dual.load_compatible_state_dict(original.state_dict())
     q, r = inputs(12, 2)
     torch.testing.assert_close(dual(q, r, q)[0], original(q, r, q)[0], atol=1e-6, rtol=1e-5)
+
+
+def normalize_reference(monkeypatch):
+    original_attention = akt_module.attention
+    def normalized(q, k, v, d_k, *args, **kwargs):
+        return original_attention(F.normalize(q.float(), dim=-1, eps=1e-6) * d_k,
+            F.normalize(k.float(), dim=-1, eps=1e-6), v, d_k, *args, **kwargs)
+    monkeypatch.setattr(akt_module, 'attention', normalized)
+
+
+def branch_case():
+    m = model(long_window=8, topk=2).eval()
+    attn = m.model.blocks_2[1].masked_attn_head
+    q = torch.randn(1, 4, 1, 4, requires_grad=True)
+    k = F.normalize(torch.randn(1, 4, 8, 4), dim=-1).detach()
+    v = torch.randn(1, 4, 8, 4).detach()
+    pos, kp = torch.tensor([[8]]), torch.arange(8)[None]
+    short, long = window_masks(pos, kp, torch.ones_like(kp, dtype=torch.bool), 4, 8)
+    return m, attn, q, k, v, pos, kp, short, long
+
+
+def test_independent_short_and_long_no_decay():
+    _, attn, q, k, v, pos, kp, short, long = branch_case()
+    normalized_q = F.normalize(q, dim=-1)
+    s, l, selected = attention_branches(attn, normalized_q, k, v, short, long, 2, pos, kp)
+    other_k, other_v = k.clone(), v.clone()
+    other_k[:, :, :4] = -k[:, :, :4]
+    other_v[:, :, :4] += 5
+    s2, l2, _ = attention_branches(attn, normalized_q, other_k, other_v, short, long, 2, pos, kp)
+    torch.testing.assert_close(s, s2, rtol=0, atol=0)
+    assert not torch.allclose(l, l2)
+    scores = (normalized_q @ k.transpose(-2, -1)) * 2
+    expected = masked_softmax(scores, selected) @ v
+    torch.testing.assert_close(l, expected)
+    with torch.no_grad():
+        attn.gammas.fill_(10.)
+    _, l3, _ = attention_branches(attn, normalized_q, k, v, short, long, 2, pos, kp, torch.ones(1, 1, 1))
+    torch.testing.assert_close(l, l3)
+
+
+def test_gate_extremes_fallback_and_registration():
+    m, attn, q, k, v, pos, kp, short, long = branch_case()
+    s, l, selected = attention_branches(attn, F.normalize(q, dim=-1), k, v, short, long, 2, pos, kp)
+    for name, parameter in m.named_parameters():
+        if name.endswith('gate_bias'):
+            torch.testing.assert_close(parameter.sigmoid(), torch.full((4,), .05))
+    assert len(m.gate_values()) == 6
+    for value, expected in [(-torch.inf, s), (torch.inf, l)]:
+        bias = torch.full((4,), value)
+        torch.testing.assert_close(fuse_heads(s, l, selected, bias), expected)
+        torch.testing.assert_close(fuse_heads(s, l, torch.zeros_like(selected), bias), s)
+    _, empty, selected = attention_branches(attn, F.normalize(q, dim=-1), k, v, short, long, 0, pos, kp)
+    assert not selected.any() and not empty.any()
+
+
+def test_long_query_and_gate_gradient_without_history_gradient():
+    _, attn, q, k, v, pos, kp, short, long = branch_case()
+    s, l, selected = attention_branches(attn, F.normalize(q, dim=-1), k, v, short, long, 2, pos, kp)
+    assert (selected.sum(-1) == 2).all()
+    # Isolate the Long path to current Q; Short cannot explain this gradient.
+    fused = fuse_heads(s.detach(), l, selected, attn.gate_bias)
+    fused.square().sum().backward()
+    assert q.grad.abs().sum() > 0
+    assert attn.gate_bias.grad.abs().sum() > 0
+    assert not k.requires_grad and not v.requires_grad
+
+
+def test_normalized_cache_and_legacy_loading():
+    m = model(long_window=8)
+    original = AKT(**config())
+    result = m.load_compatible_state_dict(original.state_dict())
+    assert len(result.missing_keys) == 6 and not result.unexpected_keys
+    for bad in ('missing', 'extra'):
+        state = dict(original.state_dict())
+        if bad == 'missing':
+            del state['q_embed.weight']
+        else:
+            state['unknown.gate_bias'] = torch.zeros(4)
+        with pytest.raises(RuntimeError, match='Incompatible weights'):
+            m.load_compatible_state_dict(state)
+    q, r = inputs(4)
+    _, _, memory, _ = m.predict_block(q, r, q, student_ids=['a'])
+    for cache in memory['layers'].values():
+        assert cache['k'].dtype == torch.float32
+        torch.testing.assert_close(cache['k'].norm(dim=-1), torch.ones(1, 4, 4))
+        assert not cache['k'].requires_grad and not cache['v'].requires_grad
+    del memory['format']
+    with pytest.raises(ValueError, match='Discard legacy caches'):
+        m.predict_block(q, r, q, student_ids=['a'], memory=memory)
+
+
+def test_fp32_scores_under_autocast():
+    _, attn, q, k, v, pos, kp, short, long = branch_case()
+    expected = attention_branches(attn, F.normalize(q, dim=-1), k, v, short, long, 2, pos, kp)
+    with torch.autocast(device_type='cpu', dtype=torch.bfloat16):
+        actual = attention_branches(attn, F.normalize(q, dim=-1), k, v, short, long, 2, pos, kp)
+    for a, b in zip(actual, expected):
+        torch.testing.assert_close(a, b)

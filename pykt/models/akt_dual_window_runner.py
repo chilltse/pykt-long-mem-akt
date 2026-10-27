@@ -29,6 +29,8 @@ def run_epoch(model, records, block_size, optimizer=None, seed=0):
     device = next(model.parameters()).device
     rows, usage = [], dict(long_selected=0, long_candidates=0, query_heads=0, long_query_heads=0)
     total_loss, total_count, steps = 0., 0, 0
+    layer_usage = {}
+    long_queries = queries = 0
     with torch.set_grad_enabled(training):
         for index in order:
             record = records[int(index)]
@@ -42,13 +44,21 @@ def run_epoch(model, records, block_size, optimizer=None, seed=0):
                 sl = slice(start, start + block_size)
                 c, q, r = [record[key][sl].to(device)[None].long() for key in ('cseqs', 'qseqs', 'rseqs')]
                 selected = labels[sl].to(device)[None]
+                has_long = torch.zeros_like(selected)
                 if isinstance(model, AKTDualWindow):
                     pred, reg, memory, stats = model.predict_block(c, r, q,
                         student_ids=[record['uid']], memory=memory)
                     for key in usage:
                         usage[key] += stats[key]
+                    has_long = stats['_has_long']
+                    for name, values in stats['layers'].items():
+                        totals = layer_usage.setdefault(name, {key: 0 for key in values})
+                        for key, value in values.items():
+                            totals[key] += value
                 else:
                     pred, reg = model(c, r, q)
+                queries += int(has_long.numel())
+                long_queries += int(has_long.sum())
                 if selected.any():
                     loss = F.binary_cross_entropy(pred[selected], r[selected].float(), reduction='sum')
                     total_loss += float(loss.detach())
@@ -60,7 +70,8 @@ def run_epoch(model, records, block_size, optimizer=None, seed=0):
                             position = start + offset
                             rows.append(dict(uid=record['uid'], position=position,
                                 target=int(r[0, offset]), prediction=float(pred[0, offset]),
-                                boundary=position > 0 and position % block_size == 0))
+                                boundary=position > 0 and position % block_size == 0,
+                                has_long=bool(has_long[0, offset])))
             if training and nlabels:
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 5.)
                 optimizer.step()
@@ -70,4 +81,10 @@ def run_epoch(model, records, block_size, optimizer=None, seed=0):
                   overall=metrics(rows), boundary=metrics([r for r in rows if r['boundary']]), long_usage=usage)
     usage['mean_selected_per_query_head'] = usage['long_selected'] / max(usage['query_heads'], 1)
     usage['fraction_query_heads_using_long'] = usage['long_query_heads'] / max(usage['query_heads'], 1)
+    for values in layer_usage.values():
+        values['fraction_queries_using_long'] = values['long_queries'] / max(values['queries'], 1)
+    report['layer_long_usage'] = layer_usage
+    report['gate_values'] = model.gate_values() if isinstance(model, AKTDualWindow) else {}
+    report['long_positions'] = metrics([r for r in rows if r['has_long']])
+    report['fraction_queries_using_long'] = long_queries / max(queries, 1)
     return report, rows

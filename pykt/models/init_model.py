@@ -210,5 +210,8 @@ def load_model(model_name, model_config, data_config, emb_type, ckpt_path, datas
             raise ValueError("Evaluation data configuration differs from saved artifact")
     model = init_model(model_name, model_config, data_config, emb_type, dataset_name)
     net = torch.load(os.path.join(ckpt_path, emb_type+"_model.ckpt"))
-    model.load_state_dict(net)
+    if model_name == "akt-dual-window":
+        model.load_compatible_state_dict(net)
+    else:
+        model.load_state_dict(net)
     return model
