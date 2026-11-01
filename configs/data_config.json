@@ -442,5 +442,33 @@
         "test_file_quelevel": "test_sequences_quelevel.csv",
         "test_window_file_quelevel": "test_window_sequences_quelevel.csv",
         "test_original_file_quelevel": "test_quelevel.csv"
+    },
+    "yousician": {
+        "dataset_format": "student_fields_v1",
+        "student_file": "student_sequences.json",
+        "fold_file": "student_fold_{fold}.json",
+        "folds": [
+            0,
+            1,
+            2,
+            3,
+            4
+        ],
+        "field_names": [
+            "prev_frets",
+            "prev_strings",
+            "frets",
+            "strings"
+        ],
+        "split_seed": 1024,
+        "input_type": [
+            "questions",
+            "attributes"
+        ],
+        "emb_path": "",
+        "dpath": "../data/yousician",
+        "dataset_name": "yousician",
+        "skipped_records": 0,
+        "question_identity": "kc_vector_v1"
     }
 }

@@ -17,6 +17,13 @@ from .pretrain_utils import get_pretrain_data
 
 
 def init_test_datasets(data_config, model_name, batch_size, diff_level=None, args=None, re_mapping=False):
+    if model_name in {"yousician_akt", "akt_fmkc"} or (model_name == "akt" and
+            data_config.get("dataset_format") == "student_fields_v1"):
+        from .student_block_dataset import init_student_loaders
+        _, _, test = init_student_loaders(data_config, data_config.get("selected_fold", 0),
+            data_config.get("block_size", 128), data_config.get("cache_blocks", 1),
+            data_config.get("seq_len", 128))
+        return test, None, None, None
     dataset_name = data_config["dataset_name"]
     print(f"model_name is {model_name}, dataset_name is {dataset_name}")
     test_question_loader, test_question_window_loader = None, None
@@ -134,6 +141,13 @@ def update_gap(max_rgap, max_sgap, max_pcount, cur):
     return max_rgap, max_sgap, max_pcount
 
 def init_dataset4train(dataset_name, model_name, data_config, i, batch_size, diff_level=None, args=None, not_select_dataset=None, re_mapping=False):
+    if model_name in {"yousician_akt", "akt_fmkc"} or (model_name == "akt" and
+            data_config[dataset_name].get("dataset_format") == "student_fields_v1"):
+        from .student_block_dataset import init_student_loaders
+        options = args if isinstance(args, dict) else vars(args) if args is not None else {}
+        return init_student_loaders(data_config[dataset_name], i,
+            options.get("block_size", 128), options.get("cache_blocks", 1),
+            options.get("seq_len", 128), options.get("seed", 3407))
     print(f"dataset_name:{dataset_name}")
     print(f"data_config:{data_config}")
     data_config = data_config[dataset_name]

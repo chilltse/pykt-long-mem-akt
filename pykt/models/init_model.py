@@ -12,6 +12,7 @@ from .kqn import KQN
 from .atkt import ATKT
 from .dkt_forget import DKTForget
 from .akt import AKT
+from .yousician_akt import YousicianAKT
 from .gkt import GKT
 from .gkt_utils import get_gkt_graph
 from .lpkt import LPKT
@@ -70,6 +71,18 @@ def init_model(model_name, model_config, data_config, emb_type, dataset_name=Non
         model = SAINT(data_config["num_q"], data_config["num_c"], **model_config, emb_type=emb_type, emb_path=data_config["emb_path"]).to(device)
     elif model_name == "dkt_forget":
         model = DKTForget(data_config["num_c"], data_config["num_rgap"], data_config["num_sgap"], data_config["num_pcount"], **model_config).to(device)
+    elif model_name in {"yousician_akt", "akt_fmkc"}:
+        if emb_type != "qid":
+            raise ValueError("yousician_akt uses the original qid attention backbone")
+        model = YousicianAKT(data_config["field_sizes"], data_config["num_q"],
+                             **model_config).to(device)
+    elif model_name == "akt" and data_config.get("dataset_format") == "student_fields_v1":
+        dense_config = dict(model_config)
+        dense_config.pop("field_dim", None)
+        dense_config.pop("drift", None)
+        model = AKT(data_config["num_q"] + 1, data_config["num_q"],
+                    **dense_config, emb_type=emb_type).to(device)
+        model.student_block_input = True
     elif model_name == "akt":
         model = AKT(data_config["num_c"], data_config["num_q"], **model_config, emb_type=emb_type, emb_path=data_config["emb_path"]).to(device)
     elif model_name == "lefokt_akt":

@@ -57,7 +57,7 @@ def main(params):
         
     debug_print(text = "load config files.",fuc_name="main")
     
-    with open("../configs/kt_config.json") as f:
+    with open(os.path.join(os.path.dirname(__file__), "../configs/kt_config.json")) as f:
         config = json.load(f)
         train_config = config["train_config"]
         if model_name in ["dkvmn","deep_irt", "sakt", "saint","saint++", "akt", "robustkt", "folibikt", "atkt", "lpkt", "skvmn", "dimkt"] + OPERA_BATCH64_MODELS:
@@ -80,8 +80,9 @@ def main(params):
         # model_config = {"d_model": params["d_model"], "n_blocks": params["n_blocks"], "dropout": params["dropout"], "d_ff": params["d_ff"]}
     batch_size, num_epochs, optimizer = train_config["batch_size"], train_config["num_epochs"], train_config["optimizer"]
 
-    with open("../configs/data_config.json") as fin:
+    with open(params.get("data_config", "../configs/data_config.json")) as fin:
         data_config = json.load(fin)
+    student_blocks = model_name in {"yousician_akt", "akt_fmkc"} or (model_name == "akt" and data_config[dataset_name].get("dataset_format") == "student_fields_v1")
     if 'maxlen' in data_config[dataset_name]:#prefer to use the maxlen in data config
         train_config["seq_len"] = data_config[dataset_name]['maxlen']
     seq_len = train_config["seq_len"]
@@ -90,13 +91,21 @@ def main(params):
     print(dataset_name, model_name, data_config, fold, batch_size)
     
     debug_print(text="init_dataset",fuc_name="main")
-    if model_name not in ["dimkt"]:
+    if student_blocks:
+        train_loader, valid_loader, test_loader = init_dataset4train(
+            dataset_name, model_name, data_config, fold, batch_size, args=params)
+        train_config.update(batch_size=1, seq_len=params["seq_len"],
+                            block_size=params["block_size"], cache_blocks=params["cache_blocks"])
+    elif model_name not in ["dimkt"]:
         train_loader, valid_loader, *_ = init_dataset4train(dataset_name, model_name, data_config, fold, batch_size)
     else:
         diff_level = params["difficult_levels"]
         train_loader, valid_loader, *_ = init_dataset4train(dataset_name, model_name, data_config, fold, batch_size, diff_level=diff_level)
 
-    params_str = "_".join([str(v) for k,v in params.items() if not k in ['other_config']])
+    excluded_params = ["other_config"]
+    if student_blocks:
+        excluded_params += ["data_config", "save_dir"]
+    params_str = "_".join([str(v) for k,v in params.items() if k not in excluded_params])
 
     print(f"params: {params}, params_str: {params_str}")
     if params['add_uuid'] == 1 and params["use_wandb"] == 1:
@@ -114,14 +123,19 @@ def main(params):
         # del model_config['num_epochs']
         del model_config['weight_decay']
 
-    save_config(train_config, model_config, data_config[dataset_name], params, ckpt_path)
+    if not student_blocks:
+        save_config(train_config, model_config, data_config[dataset_name], params, ckpt_path)
     learning_rate = params["learning_rate"]
-    for remove_item in ['use_wandb','learning_rate','add_uuid','l2','batch_size','num_epochs','weight_decay']:
+    for remove_item in ['use_wandb','learning_rate','add_uuid','l2','batch_size','num_epochs','weight_decay','data_config','block_size','cache_blocks']:
         if remove_item in model_config:
             del model_config[remove_item]
     if model_name in ["saint","saint++", "sakt", "atdkt", "simplekt","stablekt", "datakt","folibikt", "mtkt"] + OPERA_SEQ_LEN_MODELS:
         model_config["seq_len"] = seq_len
         
+    if student_blocks:
+        model_config["l2"] = params.get("l2", 1e-5)
+        save_config(train_config, model_config, data_config[dataset_name], params, ckpt_path)
+
     debug_print(text = "init_model",fuc_name="main")
     print(f"model_name:{model_name}")
     model = init_model(model_name, model_config, data_config[dataset_name], emb_type, dataset_name)
@@ -172,6 +186,13 @@ def main(params):
         net = torch.load(os.path.join(ckpt_path, emb_type+"_model.ckpt"))
         best_model.load_state_dict(net)
 
+    if student_blocks and save_model:
+        from pykt.models.yousician_akt_runner import evaluate_field_model
+        metrics = evaluate_field_model(best_model, test_loader)
+        testauc, testacc = metrics["auc"], metrics["accuracy"]
+        with open(os.path.join(ckpt_path, "test_metrics.json"), "w") as fout:
+            json.dump(metrics, fout, indent=2)
+
     print("fold\tmodelname\tembtype\ttestauc\ttestacc\twindow_testauc\twindow_testacc\tvalidauc\tvalidacc\tbest_epoch")
     print(str(fold) + "\t" + model_name + "\t" + emb_type + "\t" + str(round(testauc, 4)) + "\t" + str(round(testacc, 4)) + "\t" + str(round(window_testauc, 4)) + "\t" + str(round(window_testacc, 4)) + "\t" + str(validauc) + "\t" + str(validacc) + "\t" + str(best_epoch))
     model_save_path = os.path.join(ckpt_path, emb_type+"_model.ckpt")
@@ -180,3 +201,7 @@ def main(params):
     if params['use_wandb']==1:
         wandb.log({ 
                     "validauc": validauc, "validacc": validacc, "best_epoch": best_epoch,"model_save_path":model_save_path})
+
+    return dict(model_name=model_name, checkpoint=model_save_path, best_epoch=best_epoch,
+                valid_auc=validauc, valid_accuracy=validacc,
+                test=metrics if student_blocks else dict(auc=testauc, accuracy=testacc))

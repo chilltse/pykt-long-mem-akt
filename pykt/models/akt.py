@@ -16,7 +16,7 @@ class Dim(IntEnum):
 
 class AKT(nn.Module):
     def __init__(self, n_question, n_pid, d_model, n_blocks, dropout, d_ff=256, 
-            kq_same=1, final_fc_dim=512, num_attn_heads=8, separate_qa=False, l2=1e-5, emb_type="qid", emb_path="", pretrain_dim=768):
+            kq_same=1, final_fc_dim=512, num_attn_heads=8, separate_qa=False, l2=1e-5, emb_type="qid", emb_path="", pretrain_dim=768, seq_len=None):
         super().__init__()
         """
         Input:
@@ -27,6 +27,7 @@ class AKT(nn.Module):
             kq_same: if key query same, kq_same=1, else = 0
         """
         self.model_name = "akt"
+        self.seq_len = seq_len
         self.n_question = n_question
         self.dropout = dropout
         self.kq_same = kq_same
@@ -77,7 +78,7 @@ class AKT(nn.Module):
             qa_embed_data = self.qa_embed(target)+q_embed_data
         return q_embed_data, qa_embed_data
 
-    def forward(self, q_data, target, pid_data=None, qtest=False):
+    def forward(self, q_data, target, pid_data=None, qtest=False, loss_mask=None):
         emb_type = self.emb_type
         # Batch First
         if emb_type.startswith("qid"):
@@ -98,14 +99,14 @@ class AKT(nn.Module):
             else:
                 qa_embed_data = qa_embed_data + pid_embed_data * \
                     (qa_embed_diff_data+q_embed_diff_data)  # + uq *(h_rt+d_ct) # （q-response emb diff + question emb diff）
-            c_reg_loss = (pid_embed_data ** 2.).sum() * self.l2 # rasch部分loss
+            c_reg_loss = (pid_embed_data.squeeze(-1)[loss_mask].square().sum() if loss_mask is not None else pid_embed_data.square().sum()) * self.l2 # rasch部分loss
         else:
             c_reg_loss = 0.
 
         # BS.seqlen,d_model
         # Pass to the decoder
         # output shape BS,seqlen,d_model or d_model//2
-        d_output = self.model(q_embed_data, qa_embed_data, pid_embed_data)
+        d_output = self.model(q_embed_data, qa_embed_data, pid_embed_data, seq_len=self.seq_len)
 
         concat_q = torch.cat([d_output, q_embed_data], dim=-1)
         output = self.out(concat_q).squeeze(-1)
@@ -142,7 +143,7 @@ class Architecture(nn.Module):
                 for _ in range(n_blocks*2)
             ])
 
-    def forward(self, q_embed_data, qa_embed_data, pid_embed_data):
+    def forward(self, q_embed_data, qa_embed_data, pid_embed_data, seq_len=None):
         # target shape  bs, seqlen
         seqlen, batch_size = q_embed_data.size(1), q_embed_data.size(0)
 
@@ -155,15 +156,15 @@ class Architecture(nn.Module):
 
         # encoder
         for block in self.blocks_1:  # encode qas, 对0～t-1时刻前的qa信息进行编码
-            y = block(mask=1, query=y, key=y, values=y, pdiff=pid_embed_data) # yt^
+            y = block(mask=1, query=y, key=y, values=y, pdiff=pid_embed_data, seq_len=seq_len) # yt^
         flag_first = True
         for block in self.blocks_2:
             if flag_first:  # peek current question
                 x = block(mask=1, query=x, key=x,
-                          values=x, apply_pos=False, pdiff=pid_embed_data) # False: 没有FFN, 第一层只有self attention, 对应于xt^
+                          values=x, apply_pos=False, pdiff=pid_embed_data, seq_len=seq_len) # False: 没有FFN, 第一层只有self attention, 对应于xt^
                 flag_first = False
             else:  # dont peek current response
-                x = block(mask=0, query=x, key=x, values=y, apply_pos=True, pdiff=pid_embed_data) # True: +FFN+残差+laynorm 非第一层与0~t-1的的q的attention, 对应图中Knowledge Retriever
+                x = block(mask=0, query=x, key=x, values=y, apply_pos=True, pdiff=pid_embed_data, seq_len=seq_len) # True: +FFN+残差+laynorm 非第一层与0~t-1的的q的attention, 对应图中Knowledge Retriever
                 # mask=0，不能看到当前的response, 在Knowledge Retrever的value全为0，因此，实现了第一题只有question信息，无qa信息的目的
                 # print(x[0,0,:])
                 flag_first = True
@@ -193,7 +194,7 @@ class TransformerLayer(nn.Module):
         self.layer_norm2 = nn.LayerNorm(d_model)
         self.dropout2 = nn.Dropout(dropout)
 
-    def forward(self, mask, query, key, values, apply_pos=True, pdiff=None):
+    def forward(self, mask, query, key, values, apply_pos=True, pdiff=None, seq_len=None):
         """
         Input:
             block : object of type BasicBlock(nn.Module). It contains masked_attn_head objects which is of type MultiHeadAttention(nn.Module).
@@ -210,7 +211,14 @@ class TransformerLayer(nn.Module):
         seqlen, batch_size = query.size(1), query.size(0)
         nopeek_mask = np.triu(
             np.ones((1, 1, seqlen, seqlen)), k=mask).astype('uint8')
-        src_mask = (torch.from_numpy(nopeek_mask) == 0).to(device)
+        src_mask = (torch.from_numpy(nopeek_mask) == 0).to(query.device)
+        if seq_len is not None:
+            if seq_len < 1:
+                raise ValueError("seq_len must be positive")
+            positions = torch.arange(seqlen, device=query.device)
+            distance = positions[:, None] - positions[None, :]
+            # mask=0: previous L keys; mask=1: current plus previous L-1.
+            src_mask = src_mask & (distance < seq_len + (1 - mask))[None, None]
         if mask == 0:  # If 0, zero-padding is needed.
             # Calls block.masked_attn_head.forward() method
             query2 = self.masked_attn_head(
@@ -326,7 +334,7 @@ class MultiHeadAttention(nn.Module):
     def pad_zero(self, scores, bs, dim, zero_pad):
         if zero_pad:
             # # need: torch.Size([64, 1, 200]), scores: torch.Size([64, 200, 200]), v: torch.Size([64, 200, 32])
-            pad_zero = torch.zeros(bs, 1, dim).to(device)
+            pad_zero = scores.new_zeros(bs, 1, dim)
             scores = torch.cat([pad_zero, scores[:, 0:-1, :]], dim=1) # 所有v后置一位
         return scores
 
@@ -340,19 +348,19 @@ def attention(q, k, v, d_k, mask, dropout, zero_pad, gamma=None, pdiff=None):
         math.sqrt(d_k)  # BS, 8, seqlen, seqlen
     bs, head, seqlen = scores.size(0), scores.size(1), scores.size(2)
 
-    x1 = torch.arange(seqlen).expand(seqlen, -1).to(device)
+    x1 = torch.arange(seqlen, device=q.device).expand(seqlen, -1)
     x2 = x1.transpose(0, 1).contiguous()
 
     with torch.no_grad():
         scores_ = scores.masked_fill(mask == 0, -1e32)
         scores_ = F.softmax(scores_, dim=-1)  # BS,8,seqlen,seqlen
-        scores_ = scores_ * mask.float().to(device) # 结果和上一步一样
+        scores_ = scores_ * mask.float().to(q.device) # 结果和上一步一样
         distcum_scores = torch.cumsum(scores_, dim=-1)  # bs, 8, sl, sl
         disttotal_scores = torch.sum(
             scores_, dim=-1, keepdim=True)  # bs, 8, sl, 1 全1
         # print(f"distotal_scores: {disttotal_scores}")
         position_effect = torch.abs(
-            x1-x2)[None, None, :, :].type(torch.FloatTensor).to(device)  # 1, 1, seqlen, seqlen 位置差值
+            x1-x2)[None, None, :, :].to(device=q.device, dtype=q.dtype)  # 1, 1, seqlen, seqlen 位置差值
         # bs, 8, sl, sl positive distance
         dist_scores = torch.clamp(
             (disttotal_scores-distcum_scores)*position_effect, min=0.) # score <0 时，设置为0
@@ -375,7 +383,7 @@ def attention(q, k, v, d_k, mask, dropout, zero_pad, gamma=None, pdiff=None):
     # print(f"before zero pad scores: {scores.shape}")
     # print(zero_pad)
     if zero_pad:
-        pad_zero = torch.zeros(bs, head, 1, seqlen).to(device)
+        pad_zero = scores.new_zeros(bs, head, 1, seqlen)
         scores = torch.cat([pad_zero, scores[:, :, 1:, :]], dim=2) # 第一行score置0
     # print(f"after zero pad scores: {scores}")
     scores = dropout(scores)

@@ -86,6 +86,9 @@ def cal_loss(model, ys, r, rshft, sm, preloss=[]):
 
 def model_forward(model, data, rel=None):
     model_name = model.model_name
+    if getattr(model, "student_block_input", False):
+        from .yousician_akt_runner import field_batch_loss
+        return field_batch_loss(model, data)
     # if model_name in ["dkt_forget", "lpkt"]:
     #     q, c, r, qshft, cshft, rshft, m, sm, d, dshft = data
     if model_name in ["dkt_forget", "bakt_time", "fa_kt", "mtkt"]:
@@ -295,7 +298,7 @@ def model_forward(model, data, rel=None):
     
 
 def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, test_loader=None, test_window_loader=None, save_model=False, data_config=None, fold=None):
-    max_auc, best_epoch = 0, -1
+    max_auc, best_epoch = (float("-inf") if getattr(model, "student_block_input", False) else 0), -1
     train_step = 0
 
     rel = None
@@ -329,6 +332,8 @@ def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, t
                 loss = model_forward(model, data)
             opt.zero_grad()
             loss.backward()#compute gradients
+            if getattr(model, "student_block_input", False):
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
             if model.model_name == "rkt":
                 clip_grad_norm_(model.parameters(), model.grad_clip)
             if model.model_name == "dtransformer":
