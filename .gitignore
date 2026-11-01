@@ -15,6 +15,7 @@ build/
 .vscode/
 data/assist*
 data/assist2012
+data/
 data/algebra2005
 data/bridge2algebra2006
 data/statics2011
