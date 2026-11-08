@@ -2,6 +2,30 @@
 
 1．预处理
 
+搬运数据集：
+```python
+# 1. 安装 gdown（如果已经安装可以跳过）
+pip install -U gdown
+
+# 2. 创建目标目录
+mkdir -p data/pianokt
+
+# 3. 从 Google Drive 下载 gzip 文件
+gdown --id 1yQpsxN6GdHniTnOrKtmP8HmV2Qdlbo3b \
+  -O data/pianokt/grouped_students_30students_10days.json.gz
+
+# 4. 解压并重命名成 pianokt.json
+gzip -dc data/pianokt/grouped_students_30students_10days.json.gz \
+  > data/pianokt/pianokt.json
+
+# 5. 检查 JSON 是否有效
+python -m json.tool data/pianokt/pianokt.json > /dev/null \
+  && echo "JSON 验证成功！"
+
+# 6. 删除压缩包（确认解压成功后）
+rm data/pianokt/grouped_students_30students_10days.json.gz
+```
+
 在项目根目录执行：
 
 ```bash
