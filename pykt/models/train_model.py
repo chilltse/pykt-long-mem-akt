@@ -87,7 +87,7 @@ def cal_loss(model, ys, r, rshft, sm, preloss=[]):
 def model_forward(model, data, rel=None):
     model_name = model.model_name
     if getattr(model, "student_block_input", False):
-        from .yousician_akt_runner import field_batch_loss
+        from .akt_fmkc_runner import field_batch_loss
         return field_batch_loss(model, data)
     # if model_name in ["dkt_forget", "lpkt"]:
     #     q, c, r, qshft, cshft, rshft, m, sm, d, dshft = data

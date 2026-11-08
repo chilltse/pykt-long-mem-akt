@@ -12,7 +12,7 @@ from .kqn import KQN
 from .atkt import ATKT
 from .dkt_forget import DKTForget
 from .akt import AKT
-from .yousician_akt import YousicianAKT
+from .akt_fmkc import AKTFMKC
 from .gkt import GKT
 from .gkt_utils import get_gkt_graph
 from .lpkt import LPKT
@@ -73,8 +73,8 @@ def init_model(model_name, model_config, data_config, emb_type, dataset_name=Non
         model = DKTForget(data_config["num_c"], data_config["num_rgap"], data_config["num_sgap"], data_config["num_pcount"], **model_config).to(device)
     elif model_name in {"yousician_akt", "akt_fmkc"}:
         if emb_type != "qid":
-            raise ValueError("yousician_akt uses the original qid attention backbone")
-        model = YousicianAKT(data_config["field_sizes"], data_config["num_q"],
+            raise ValueError("akt_fmkc uses the original qid attention backbone")
+        model = AKTFMKC(data_config["field_sizes"], data_config["num_q"],
                              **model_config).to(device)
     elif model_name == "akt" and data_config.get("dataset_format") == "student_fields_v1":
         dense_config = dict(model_config)

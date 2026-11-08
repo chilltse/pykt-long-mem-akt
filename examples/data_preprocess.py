@@ -1,5 +1,7 @@
 import os, sys
 import argparse
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pykt.preprocess.split_datasets import main as split_concept
 from pykt.preprocess.split_datasets_que import main as split_question
 from pykt.preprocess import data_proprocess, process_raw_data
@@ -33,16 +35,23 @@ if __name__ == "__main__":
     parser.add_argument("-k","--kfold", type=int, default=5)
     # parser.add_argument("--mode", type=str, default="concept",help="question or concept")
     parser.add_argument("--model_name", default=None)
+    parser.add_argument("--input_format", choices=["yousician", "vector"], default=None)
     parser.add_argument("--output_dir", default=None)
     parser.add_argument("--config_file", default=configf)
     parser.add_argument("--seed", type=int, default=1024)
     args = parser.parse_args()
-    if args.model_name in {"yousician_akt", "akt_fmkc"} or (args.model_name == "akt" and args.dataset_name == "yousician") or (args.model_name is None and
-            args.dataset_name in {"yousician", "yousician_fmkc"}):
-        from pykt.preprocess.yousician_field_preprocess import prepare_dataset
-        if args.dataset_name not in {"yousician", "yousician_fmkc"}:
-            parser.error("yousician_akt preprocessing requires a Yousician dataset")
-        prepare_dataset(args.file_path or dname2paths[args.dataset_name], args.output_dir or "../data/" + args.dataset_name,
+    if args.model_name in {"yousician_akt", "akt_fmkc"} or (args.model_name in {None, "akt"} and
+            args.dataset_name in {"yousician", "yousician_fmkc", "pianokt"}):
+        input_format = args.input_format or ("yousician" if args.dataset_name in
+            {"yousician", "yousician_fmkc"} else "vector")
+        if input_format == "yousician":
+            from pykt.preprocess.yousician_field_preprocess import prepare_dataset
+        else:
+            from pykt.preprocess.vector_kc_preprocess import prepare_dataset
+        source = args.file_path or dname2paths.get(args.dataset_name)
+        if not source:
+            parser.error("Provide --file_path for this dataset")
+        prepare_dataset(source, args.output_dir or "../data/" + args.dataset_name,
                         args.config_file, args.dataset_name, args.kfold, args.seed)
         sys.exit(0)
 

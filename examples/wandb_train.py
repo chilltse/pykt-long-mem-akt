@@ -187,7 +187,7 @@ def main(params):
         best_model.load_state_dict(net)
 
     if student_blocks and save_model:
-        from pykt.models.yousician_akt_runner import evaluate_field_model
+        from pykt.models.akt_fmkc_runner import evaluate_field_model
         metrics = evaluate_field_model(best_model, test_loader)
         testauc, testacc = metrics["auc"], metrics["accuracy"]
         with open(os.path.join(ckpt_path, "test_metrics.json"), "w") as fout:

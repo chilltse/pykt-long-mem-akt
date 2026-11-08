@@ -11,6 +11,8 @@ from torch.utils.data import IterableDataset, DataLoader
 def encode_student(events, encoding):
     attrs, pids, responses = [], [], []
     for values, pid, response in events:
+        if len(values) != len(encoding["fields"]):
+            raise ValueError("KC vector width does not match field vocabulary")
         attrs.append([2 if value is None or value == "" else mapping.get(value, 1)
                       for mapping, value in zip(encoding["fields"], values)])
         pids.append(encoding["questions"].get(pid, 0))
@@ -91,7 +93,7 @@ def init_student_loaders(data_config, fold, block_size=128, cache_blocks=1,
                          seq_len=128, seed=3407):
     """Load prepared artifacts only. Never fit encodings or read source records."""
     if data_config.get("dataset_format") != "student_fields_v1":
-        raise ValueError("Run data_preprocess.py --dataset_name ... --model_name yousician_akt first")
+        raise ValueError("Run data_preprocess.py --dataset_name ... --model_name akt_fmkc first")
     if fold not in data_config["folds"]:
         raise ValueError(f"Unknown fold: {fold}")
     if block_size < 1 or cache_blocks < 0 or (seq_len is not None and

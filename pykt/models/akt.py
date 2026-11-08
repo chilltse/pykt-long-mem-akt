@@ -194,6 +194,37 @@ class TransformerLayer(nn.Module):
         self.layer_norm2 = nn.LayerNorm(d_model)
         self.dropout2 = nn.Dropout(dropout)
 
+    def forward_step(self, query, cache, position, seq_len, include_current,
+                     values=None, apply_pos=True):
+        """Single event; return output and uncommitted current K/V projections."""
+        head = self.masked_attn_head
+        if self.training or head.emb_type != "qid":
+            raise ValueError("Incremental attention requires eval mode and emb_type=qid")
+        def project(linear, tensor):
+            return linear(tensor).view(1, 1, head.h, head.d_k).transpose(1, 2)
+        q = project(head.k_linear if head.kq_same else head.q_linear, query)
+        key = project(head.k_linear, query)
+        value = None if values is None else project(head.v_linear, values)
+        keys, vals, positions = cache.key, cache.value, cache.positions
+        if include_current:
+            if value is None:
+                raise ValueError("Self attention requires current values")
+            keys = torch.cat((keys, key), dim=2)
+            vals = torch.cat((vals, value), dim=2)
+            positions = torch.cat((positions, positions.new_tensor([position])))
+        distance = position - positions
+        allowed = distance >= (0 if include_current else 1)
+        if seq_len is not None:
+            allowed = allowed & (distance < seq_len + (not include_current))
+        aggregate = attention_incremental(q, keys, vals, position, positions,
+                                          allowed, head.gammas, head.dropout)
+        output = head.out_proj(aggregate.transpose(1, 2).reshape(1, 1, head.d_model))
+        output = self.layer_norm1(query + self.dropout1(output))
+        if apply_pos:
+            hidden = self.linear2(self.dropout(self.activation(self.linear1(output))))
+            output = self.layer_norm2(output + self.dropout2(hidden))
+        return output, key, value
+
     def forward(self, mask, query, key, values, apply_pos=True, pdiff=None, seq_len=None):
         """
         Input:
@@ -337,6 +368,21 @@ class MultiHeadAttention(nn.Module):
             pad_zero = scores.new_zeros(bs, 1, dim)
             scores = torch.cat([pad_zero, scores[:, 0:-1, :]], dim=1) # 所有v后置一位
         return scores
+
+
+def attention_incremental(q, k, v, query_pos, key_positions, allowed, gamma, dropout):
+    """Non-square AKT distance decay; absolute positions preserve local semantics."""
+    if not allowed.any():
+        return torch.zeros_like(q)
+    scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(q.size(-1))
+    with torch.no_grad():
+        base = F.softmax(scores.masked_fill(~allowed, -1e32), dim=-1)
+        base = base * allowed.to(q.dtype)
+        distance = (query_pos - key_positions).abs().to(q.dtype)
+        dist = ((base.sum(-1, keepdim=True) - base.cumsum(-1)) * distance).clamp(min=0).sqrt()
+    effect = (dist * -F.softplus(gamma).unsqueeze(0)).exp().clamp(1e-5, 1e5)
+    weights = F.softmax((scores * effect).masked_fill(~allowed, -1e32), dim=-1)
+    return torch.matmul(dropout(weights), v)
 
 
 def attention(q, k, v, d_k, mask, dropout, zero_pad, gamma=None, pdiff=None):

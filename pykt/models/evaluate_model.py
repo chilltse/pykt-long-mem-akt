@@ -51,7 +51,7 @@ def save_cur_predict_result(dres, q, r, d, t, m, sm, p):
 
 def evaluate(model, test_loader, model_name, rel=None, save_path=""):
     if getattr(model, "student_block_input", False):
-        from .yousician_akt_runner import evaluate_field_model
+        from .akt_fmkc_runner import evaluate_field_model
         metrics = evaluate_field_model(model, test_loader, save_path)
         return metrics["auc"], metrics["accuracy"]
     if save_path != "":
