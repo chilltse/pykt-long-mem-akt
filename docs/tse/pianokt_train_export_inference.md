@@ -3,57 +3,56 @@
 1．预处理
 
 在项目根目录执行：
+
+```bash
 conda activate pykt
 cd examples
+python data_preprocess.py --dataset_name pianokt
+```
 
-python data_preprocess.py   
-  --dataset_name pianokt   
-  --model_name akt_fmkc   
-  --file_path ../data/pianokt/pianokt.json   
-  --output_dir ../data/pianokt/prepared   
-  --config_file ../configs/data_config.json   
-  --kfold 4   
-  --seed 1024
-这一步会生成：
-data/pianokt/prepared/
+只需要指定数据集名称，程序会自动选择 PianoKT 读取器，读取 `data/pianokt/pianokt.json`，输出到 `data/pianokt/`，并更新 `configs/data_config.json`。`model_name`、`file_path`、`output_dir`、`config_file` 和 `seed` 均无需手动指定；这些可选参数只用于覆盖默认行为。
+
+默认 `kfold=5`，按原划分逻辑至少需要 6 名学生。如果实际只有 5 名学生，显式使用 4 折：
+
+```bash
+python data_preprocess.py --dataset_name pianokt --kfold 4
+```
+
+以 4 折为例，生成：
+
+```text
+data/pianokt/
   student_sequences.json
   student_fold_0.json
   student_fold_1.json
   student_fold_2.json
   student_fold_3.json
+```
+
 同时更新 configs/data_config.json 中的 pianokt 配置。
 
 原始数据按 learner_key 聚合，attempt 按时间排序，内部按 onset 排序；每个 onset 对应一个六维向量和一个标签。字段词表只在各折训练学生上拟合。
 
 2．训练
 
-仍在 examples 目录：
-python train_akt_fmkc.py   
-  --dataset_name pianokt   
-  --data_config ../configs/data_config.json   
-  --model_name akt_fmkc   
-  --fold 0   
-  --save_dir ../saved_model/pianokt   
-  --num_epochs 30   
-  --d_model 128   
-  --d_ff 256   
-  --field_dim 16   
-  --n_blocks 2   
-  --num_attn_heads 8   
-  --dropout 0.2   
-  --learning_rate 0.0001   
-  --block_size 128   
-  --cache_blocks 1   
-  --seq_len 128   
-  --use_wandb 0
-这是一个可用的起始配置。fold 0 表示第 0 折验证；要跑完整交叉验证，分别执行 --fold 0/1/2/3。
+仍在 `examples` 目录，最简命令为：
 
-block_size × cache_blocks 必须至少覆盖 seq_len，上面的参数满足要求。
+```bash
+python train_akt_fmkc.py --dataset_name pianokt
+```
+
+脚本默认使用 `akt_fmkc`，自动读取项目的 `configs/data_config.json`，训练第 0 折。数据路径和划分文件由预处理配置决定，字段词表及模型输入大小在加载对应折时确定；训练不会重新划分学生或拟合词表。
+
+数据配置与训练超参数分开：模型维度、层数、学习率、训练轮数等采用训练入口的默认值（例如 30 轮、d_model=256、4 层）。需要调整时才传相应参数。默认 block_size=128、cache_blocks=1、seq_len=128，满足缓存容量要求。
+
+若预处理生成 4 折，要跑完整交叉验证，分别指定 `--fold 0`、`--fold 1`、`--fold 2`、`--fold 3`；单条最简命令只训练第 0 折。
+
+训练复用 pyKT 的共享入口：`wandb_train.main → init_dataset4train → init_model → train_model`。字段向量数据通过新增的 `student_fields_v1` 加载器和 AKTFMKC 模型分支接入。
 
 3．取得 checkpoint
 
-训练会自动保存，无需另行执行导出命令：
-saved_model/pianokt/<本次训练参数目录>/
+训练会自动保存，无需另行执行导出命令。默认 save_dir 是相对运行目录的 saved_model，因此在 examples 中执行时，项目内路径为：
+examples/saved_model/<本次训练参数目录>/
   qid_model.ckpt
   config.json
   test_metrics.json
@@ -64,7 +63,7 @@ saved_model/pianokt/<本次训练参数目录>/
 部署时必须一起携带 qid_model.ckpt 和同目录的 config.json。推理恢复依赖这份配置里的词表，不能重新拟合或改用其他折的词表。
 
 查找权重路径：
-find ../saved_model/pianokt -name qid_model.ckpt
+find saved_model -name qid_model.ckpt
 4．推理：先预测，再记录真实结果
 
 回到项目根目录：
@@ -75,7 +74,7 @@ import json
 from pykt.preprocess.vector_kc_preprocess import category
 from pykt.models.akt_fmkc_runner import load_fmkc_checkpoint
 
-checkpoint = "saved_model/pianokt/<本次训练参数目录>/qid_model.ckpt"
+checkpoint = "examples/saved_model/<本次训练参数目录>/qid_model.ckpt"
 
 model, metadata = load_fmkc_checkpoint(checkpoint, device="cpu")
 encoding = metadata["data_config"]["encoding"]

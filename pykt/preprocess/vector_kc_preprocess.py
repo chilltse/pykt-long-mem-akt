@@ -110,6 +110,7 @@ def read_students(path):
 
 def prepare_dataset(read_file, output_dir, config_file, dataset_name='pianokt',
                     kfold=5, seed=1024):
+    print(f'[{dataset_name}] Reading vector KC data: {Path(read_file).resolve()}', flush=True)
     students, names = read_students(read_file)
     entry = prepare_student_sequences(students, names, output_dir, kfold, seed)
     examples = Path(__file__).resolve().parents[2] / 'examples'
@@ -121,4 +122,6 @@ def prepare_dataset(read_file, output_dir, config_file, dataset_name='pianokt',
     config[dataset_name] = entry
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(config, ensure_ascii=False, indent=4) + '\n')
+    print(f'[{dataset_name}] Updated data config: {path.resolve()}', flush=True)
+    print(f'[{dataset_name}] Preprocessing complete: {Path(output_dir).resolve()}', flush=True)
     return entry
