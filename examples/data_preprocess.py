@@ -7,6 +7,7 @@ from pykt.preprocess.split_datasets_que import main as split_question
 from pykt.preprocess import data_proprocess, process_raw_data
 
 dname2paths = {
+    "pianokt": "../data/pianokt/pianokt.json",
     "yousician": "../data/yousician/yousician_ukulele.json",
     "yousician_fmkc": "../data/yousician_fmkc/yousician_ukulele.json",
     "assist2009": "../data/assist2009/skill_builder_data_corrected_collapsed.csv",

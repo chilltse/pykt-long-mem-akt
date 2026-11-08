@@ -1,0 +1,918 @@
+{
+  "cutoff": "2026-11-09T23:00:00+00:00",
+  "dataset_version": "96ac521f67764e388adf90162025659feaa729b2a0afd9a89e9be55be325de0f",
+  "kc_labeler_version": "1.2.0",
+  "quality_policy": "quality-valid-and-not-waiting",
+  "source": "postgres-ready-v1",
+  "source_environment": "production",
+  "warning": "Split students/time before windowing. No trained model is included.",
+  "grouping_schema_version": 2,
+  "students": [
+    {
+      "learner_key": "3ff67db3-0f66-4473-8048-aedc306a3b0e",
+      "visits": [
+        {
+          "visit_id": "7548a123-3ba6-41ea-9635-4027e32a62ae",
+          "started_at": null,
+          "ordering_timestamp": "2026-11-08T06:06:02.754000+00:00",
+          "ordering_source": "earliest_exported_attempt",
+          "attempts": [
+            {
+              "alignment_run_id": "35be0c4001c61ead00842d0e6efba4183c8c703536fe6a1fdbc0cb4cc8a930a9",
+              "attempt_id": "81b85718-9bd2-4b43-aa53-92ae5d1085a0",
+              "kc_labeler_version": "1.2.0",
+              "matcher_version": "time-guided-chord-monotonic-v3",
+              "midi_keyboard_used": false,
+              "midi_sha256": "d47febc2cb729516ac8886ba8fefe3f111d5199adacaf0f948820c804052ec1b",
+              "reference_events_count": 3,
+              "result_digest": "222fa4da5bedf51dce2812711fe0c56e5ff92657a7018b676bf275c260dce721",
+              "segment_id": "9e455160-c8ce-493e-9096-e35846463155",
+              "segment_index": 1,
+              "song_id": "70374d0a-4ed3-4ff1-b264-18c08a4b9d6e",
+              "visit_id": "7548a123-3ba6-41ea-9635-4027e32a62ae",
+              "ordering_source": "started_at",
+              "ordering_timestamp": "2026-11-08T06:06:02.754000+00:00",
+              "events_data": {
+                "onset_seconds": [
+                  0.0,
+                  0.25,
+                  0.5
+                ],
+                "pitches": [
+                  [
+                    [],
+                    [
+                      86
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      88
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      84
+                    ]
+                  ]
+                ],
+                "intervals_seconds": [
+                  [
+                    null,
+                    null,
+                    null
+                  ],
+                  [
+                    null,
+                    0.25,
+                    0.25
+                  ],
+                  [
+                    null,
+                    0.25,
+                    0.25
+                  ]
+                ],
+                "timing_offset_ms": [
+                  [
+                    [],
+                    [
+                      317
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      201
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      450
+                    ]
+                  ]
+                ],
+                "pitch_offset_semitones": [
+                  [
+                    [],
+                    [
+                      0
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      -4
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      0
+                    ]
+                  ]
+                ],
+                "extra_notes": [
+                  [],
+                  [],
+                  []
+                ],
+                "kc_vectors": [
+                  [
+                    false,
+                    1,
+                    false,
+                    null,
+                    1,
+                    null
+                  ],
+                  [
+                    false,
+                    1,
+                    false,
+                    30,
+                    1,
+                    1
+                  ],
+                  [
+                    false,
+                    1,
+                    false,
+                    30,
+                    1,
+                    1
+                  ]
+                ],
+                "reject_reason": {
+                  "event": [
+                    1,
+                    1,
+                    1
+                  ],
+                  "note": [
+                    [
+                      [],
+                      [
+                        3
+                      ]
+                    ],
+                    [
+                      [],
+                      [
+                        4
+                      ]
+                    ],
+                    [
+                      [],
+                      [
+                        3
+                      ]
+                    ]
+                  ]
+                },
+                "correct": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "alignment_run_id": "d710006f14de5e76bdb8779323f50f40d247941d18ef2a50b7ba49adc1b32806",
+              "attempt_id": "8f2089d2-776b-4ae4-bcd0-c9b2370f3aaf",
+              "kc_labeler_version": "1.2.0",
+              "matcher_version": "time-guided-chord-monotonic-v3",
+              "midi_keyboard_used": false,
+              "midi_sha256": "49bbce79d941041bb0e751ef8f2c8fc7784de6376e741dc73cc69791d6c16ad5",
+              "reference_events_count": 3,
+              "result_digest": "fce4db0edb6cfbe8c899f83e47858eec94c41769726b48de4317b4eda21b6aee",
+              "segment_id": "6fe9345a-b81f-400d-8935-98d357caca84",
+              "segment_index": 1,
+              "song_id": "ce1285b5-482f-4c06-b47a-c1717f31705b",
+              "visit_id": "7548a123-3ba6-41ea-9635-4027e32a62ae",
+              "ordering_source": "started_at",
+              "ordering_timestamp": "2026-11-08T06:06:39.174000+00:00",
+              "events_data": {
+                "onset_seconds": [
+                  0.25,
+                  0.75,
+                  1.0
+                ],
+                "pitches": [
+                  [
+                    [],
+                    [
+                      57
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      57
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      62
+                    ]
+                  ]
+                ],
+                "intervals_seconds": [
+                  [
+                    null,
+                    null,
+                    null
+                  ],
+                  [
+                    null,
+                    0.5,
+                    0.5
+                  ],
+                  [
+                    null,
+                    0.25,
+                    0.25
+                  ]
+                ],
+                "timing_offset_ms": [
+                  [
+                    [],
+                    [
+                      139
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      -178
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      -161
+                    ]
+                  ]
+                ],
+                "pitch_offset_semitones": [
+                  [
+                    [],
+                    [
+                      2
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      3
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      0
+                    ]
+                  ]
+                ],
+                "extra_notes": [
+                  [],
+                  [],
+                  []
+                ],
+                "kc_vectors": [
+                  [
+                    false,
+                    1,
+                    false,
+                    null,
+                    1,
+                    null
+                  ],
+                  [
+                    false,
+                    1,
+                    false,
+                    50,
+                    0,
+                    0
+                  ],
+                  [
+                    false,
+                    1,
+                    false,
+                    30,
+                    1,
+                    2
+                  ]
+                ],
+                "reject_reason": {
+                  "event": [
+                    1,
+                    1,
+                    1
+                  ],
+                  "note": [
+                    [
+                      [],
+                      [
+                        2
+                      ]
+                    ],
+                    [
+                      [],
+                      [
+                        4
+                      ]
+                    ],
+                    [
+                      [],
+                      [
+                        3
+                      ]
+                    ]
+                  ]
+                },
+                "correct": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "learner_key": "76bebe76-dcb4-411e-baf2-f3f3572a9721",
+      "visits": [
+        {
+          "visit_id": "477cd9d3-aae3-421c-98e4-548b30d14781",
+          "started_at": null,
+          "ordering_timestamp": "2026-11-08T06:13:06.134000+00:00",
+          "ordering_source": "earliest_exported_attempt",
+          "attempts": [
+            {
+              "alignment_run_id": "4ef2dd4613b987a2fca7db109a4d70af8b38c04e763e4e05fe7b20be0aa45315",
+              "attempt_id": "0b5b09c3-fba1-46b4-b95c-3b77af1b2d0d",
+              "kc_labeler_version": "1.2.0",
+              "matcher_version": "time-guided-chord-monotonic-v3",
+              "midi_keyboard_used": false,
+              "midi_sha256": "8f52cbce14ba650be209db1e2bf918269982ba38ad813fe1eea9e5f95bf1d7e2",
+              "reference_events_count": 3,
+              "result_digest": "042e78c1b09a081f40e7e2c9f2c4cba2528d51952e3a2b40a34e234df6b27d30",
+              "segment_id": "99785773-6166-43c1-b4af-4ec1aa03da76",
+              "segment_index": 1,
+              "song_id": "65ef5b6a-53f7-4dde-a7cd-d682923ecb7a",
+              "visit_id": "477cd9d3-aae3-421c-98e4-548b30d14781",
+              "ordering_source": "started_at",
+              "ordering_timestamp": "2026-11-08T06:13:06.134000+00:00",
+              "events_data": {
+                "onset_seconds": [
+                  0.0,
+                  2.0,
+                  2.25
+                ],
+                "pitches": [
+                  [
+                    [
+                      40,
+                      52
+                    ],
+                    []
+                  ],
+                  [
+                    [
+                      33
+                    ],
+                    [
+                      45
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      47
+                    ]
+                  ]
+                ],
+                "intervals_seconds": [
+                  [
+                    null,
+                    null,
+                    null
+                  ],
+                  [
+                    2.0,
+                    null,
+                    2.0
+                  ],
+                  [
+                    null,
+                    0.25,
+                    0.25
+                  ]
+                ],
+                "timing_offset_ms": [
+                  [
+                    [
+                      35,
+                      null
+                    ],
+                    []
+                  ],
+                  [
+                    [
+                      -82
+                    ],
+                    [
+                      null
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      68
+                    ]
+                  ]
+                ],
+                "pitch_offset_semitones": [
+                  [
+                    [
+                      0,
+                      null
+                    ],
+                    []
+                  ],
+                  [
+                    [
+                      0
+                    ],
+                    [
+                      null
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      0
+                    ]
+                  ]
+                ],
+                "extra_notes": [
+                  [
+                    41,
+                    43,
+                    45,
+                    47,
+                    48,
+                    50
+                  ],
+                  [
+                    32,
+                    33,
+                    34,
+                    35,
+                    37,
+                    38,
+                    40,
+                    43,
+                    45,
+                    47,
+                    48
+                  ],
+                  [
+                    48,
+                    49
+                  ]
+                ],
+                "kc_vectors": [
+                  [
+                    false,
+                    2,
+                    false,
+                    null,
+                    2,
+                    null
+                  ],
+                  [
+                    false,
+                    2,
+                    true,
+                    90,
+                    2,
+                    2
+                  ],
+                  [
+                    false,
+                    1,
+                    false,
+                    30,
+                    1,
+                    1
+                  ]
+                ],
+                "reject_reason": {
+                  "event": [
+                    1,
+                    1,
+                    1
+                  ],
+                  "note": [
+                    [
+                      [
+                        0,
+                        1
+                      ],
+                      []
+                    ],
+                    [
+                      [
+                        0
+                      ],
+                      [
+                        1
+                      ]
+                    ],
+                    [
+                      [],
+                      [
+                        0
+                      ]
+                    ]
+                  ]
+                },
+                "correct": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "alignment_run_id": "af41886a18e762b3729ec330894b047a242684a435bbeb02dfdbc2179782c51e",
+              "attempt_id": "f937146b-3635-472b-b445-11f5d32c15df",
+              "kc_labeler_version": "1.2.0",
+              "matcher_version": "time-guided-chord-monotonic-v3",
+              "midi_keyboard_used": false,
+              "midi_sha256": "69e029b5ebfc3ac16a893d06dab8861fc9b8339f907c47f47e4b1953578d3034",
+              "reference_events_count": 3,
+              "result_digest": "432e5c2437b092c2fa2206a3eab8132911e818332eacd748b2aa436d97da09f6",
+              "segment_id": "c9d11da3-363a-476a-81b3-8336d2093f12",
+              "segment_index": 1,
+              "song_id": "b9c76f63-47ca-49e4-84e7-1747cb94b584",
+              "visit_id": "477cd9d3-aae3-421c-98e4-548b30d14781",
+              "ordering_source": "started_at",
+              "ordering_timestamp": "2026-11-08T06:13:39.757000+00:00",
+              "events_data": {
+                "onset_seconds": [
+                  0.0,
+                  0.5,
+                  1.0
+                ],
+                "pitches": [
+                  [
+                    [],
+                    [
+                      60
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      60
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      67
+                    ]
+                  ]
+                ],
+                "intervals_seconds": [
+                  [
+                    null,
+                    null,
+                    null
+                  ],
+                  [
+                    null,
+                    0.5,
+                    0.5
+                  ],
+                  [
+                    null,
+                    0.5,
+                    0.5
+                  ]
+                ],
+                "timing_offset_ms": [
+                  [
+                    [],
+                    [
+                      438
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      421
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      304
+                    ]
+                  ]
+                ],
+                "pitch_offset_semitones": [
+                  [
+                    [],
+                    [
+                      0
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      0
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      0
+                    ]
+                  ]
+                ],
+                "extra_notes": [
+                  [],
+                  [
+                    57,
+                    59,
+                    64,
+                    65,
+                    67,
+                    69,
+                    71,
+                    72,
+                    74,
+                    76
+                  ],
+                  [
+                    62,
+                    62,
+                    64,
+                    64,
+                    64,
+                    65,
+                    65,
+                    65,
+                    67,
+                    67,
+                    67,
+                    69,
+                    71,
+                    72,
+                    74
+                  ]
+                ],
+                "kc_vectors": [
+                  [
+                    false,
+                    1,
+                    false,
+                    null,
+                    1,
+                    null
+                  ],
+                  [
+                    false,
+                    1,
+                    false,
+                    50,
+                    0,
+                    0
+                  ],
+                  [
+                    false,
+                    1,
+                    false,
+                    50,
+                    1,
+                    2
+                  ]
+                ],
+                "reject_reason": {
+                  "event": [
+                    1,
+                    1,
+                    1
+                  ],
+                  "note": [
+                    [
+                      [],
+                      [
+                        3
+                      ]
+                    ],
+                    [
+                      [],
+                      [
+                        3
+                      ]
+                    ],
+                    [
+                      [],
+                      [
+                        3
+                      ]
+                    ]
+                  ]
+                },
+                "correct": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            },
+            {
+              "alignment_run_id": "c32c558bde2ff9d62bbccc2c7f5cc5c76859a671ce645266e3b88974e77c303c",
+              "attempt_id": "65c3431c-f084-4dfb-b440-63ba42397546",
+              "kc_labeler_version": "1.2.0",
+              "matcher_version": "time-guided-chord-monotonic-v3",
+              "midi_keyboard_used": false,
+              "midi_sha256": "591e7c543f16655022b6cee6dd09974dea6f50debe79e7c093f89941c51868d3",
+              "reference_events_count": 3,
+              "result_digest": "1da86ae420354fb276263c1fcd75a471a274853eec757b2a9c512706f6deadce",
+              "segment_id": "a1a42049-a1e0-4b7b-a8b9-42132c958234",
+              "segment_index": 1,
+              "song_id": "453914ae-5c44-45d6-a212-01a5690133f8",
+              "visit_id": "477cd9d3-aae3-421c-98e4-548b30d14781",
+              "ordering_source": "started_at",
+              "ordering_timestamp": "2026-11-08T06:24:10.238000+00:00",
+              "events_data": {
+                "onset_seconds": [
+                  0.0,
+                  0.5,
+                  1.0
+                ],
+                "pitches": [
+                  [
+                    [],
+                    [
+                      71
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      71
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      72
+                    ]
+                  ]
+                ],
+                "intervals_seconds": [
+                  [
+                    null,
+                    null,
+                    null
+                  ],
+                  [
+                    null,
+                    0.5,
+                    0.5
+                  ],
+                  [
+                    null,
+                    0.5,
+                    0.5
+                  ]
+                ],
+                "timing_offset_ms": [
+                  [
+                    [],
+                    [
+                      163
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      -3
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      -37
+                    ]
+                  ]
+                ],
+                "pitch_offset_semitones": [
+                  [
+                    [],
+                    [
+                      0
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      1
+                    ]
+                  ],
+                  [
+                    [],
+                    [
+                      0
+                    ]
+                  ]
+                ],
+                "extra_notes": [
+                  [],
+                  [
+                    74
+                  ],
+                  [
+                    71
+                  ]
+                ],
+                "kc_vectors": [
+                  [
+                    false,
+                    1,
+                    false,
+                    null,
+                    1,
+                    null
+                  ],
+                  [
+                    false,
+                    1,
+                    false,
+                    50,
+                    0,
+                    0
+                  ],
+                  [
+                    false,
+                    1,
+                    false,
+                    50,
+                    1,
+                    1
+                  ]
+                ],
+                "reject_reason": {
+                  "event": [
+                    1,
+                    1,
+                    1
+                  ],
+                  "note": [
+                    [
+                      [],
+                      [
+                        3
+                      ]
+                    ],
+                    [
+                      [],
+                      [
+                        2
+                      ]
+                    ],
+                    [
+                      [],
+                      [
+                        0
+                      ]
+                    ]
+                  ]
+                },
+                "correct": [
+                  0,
+                  0,
+                  0
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
