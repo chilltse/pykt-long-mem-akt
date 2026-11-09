@@ -23,5 +23,9 @@ setup(
     packages=find_packages(),
     python_requires=">=3.5",
     include_package_data=True,
+    extras_require={
+        'serving': ['fastapi>=0.115,<1', 'pydantic>=2.7,<3', 'uvicorn>=0.30,<1'],
+        'serving-test': ['pytest>=7', 'httpx>=0.27,<1'],
+    },
     install_requires=['numpy>=1.17.2','pandas>=1.1.5','scikit-learn','torch>=1.7.0','wandb>=0.12.9','entmax'],
 )

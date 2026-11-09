@@ -70,3 +70,10 @@ examples/nips2022-peiyou/
 examples/nips2022-ednet/
 examples/models/
 docs/superpowers/
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
+*.ckpt
