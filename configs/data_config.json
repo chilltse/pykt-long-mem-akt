@@ -470,5 +470,35 @@
         "dataset_name": "yousician",
         "skipped_records": 0,
         "question_identity": "kc_vector_v1"
+    },
+    "pianokt": {
+        "dataset_format": "student_fields_v1",
+        "student_file": "student_sequences.json",
+        "fold_file": "student_fold_{fold}.json",
+        "folds": [
+            0,
+            1,
+            2,
+            3,
+            4
+        ],
+        "field_names": [
+            "kc_0",
+            "kc_1",
+            "kc_2",
+            "kc_3",
+            "kc_4",
+            "kc_5"
+        ],
+        "split_seed": 1024,
+        "input_type": [
+            "questions",
+            "attributes"
+        ],
+        "emb_path": "",
+        "dpath": "../data/pianokt",
+        "dataset_name": "pianokt",
+        "question_identity": "kc_vector_json_v1",
+        "category_encoding": "typed_json_scalar_v1"
     }
 }
