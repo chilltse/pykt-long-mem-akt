@@ -1,0 +1,19 @@
+budget_repeats: 2
+candidate_order: shortest_first
+checkpoint: /Users/tse/my_code/long_mem_akt/pykt-long-mem-akt/tse/qid_model.ckpt
+cli:
+  candidate_limit: 3
+  config: configs/experiments/local_mu_probe.yaml
+  dry_run: false
+  evaluation_mc: 16
+  mode: offline
+  output: docs/tse/kt_mu_local_run
+  reference_mc: 32
+  seed: 3407
+  selection_mc: 4
+  student_limit: 2
+local_feature_root: /Users/tse/my_code/pianokt/output/supabase_reference_extract/recommendation_features
+mc_budgets:
+- 4
+- 8
+student_history: /Users/tse/my_code/long_mem_akt/pykt-long-mem-akt/docs/tse/grouped_students_2students_30days.json

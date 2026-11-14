@@ -1,0 +1,7 @@
+checkpoint: /Users/tse/my_code/long_mem_akt/pykt-long-mem-akt/tse/qid_model.ckpt
+local_feature_root: /Users/tse/my_code/pianokt/output/supabase_reference_extract/recommendation_features
+student_history: /Users/tse/my_code/long_mem_akt/pykt-long-mem-akt/docs/tse/grouped_students_2students_30days.json
+mc_budgets: [4, 8]
+budget_repeats: 2
+
+candidate_order: shortest_first

@@ -1,0 +1,13 @@
+method,epsilon,epsilon_optimal_rate
+sweet_spot,0.001,0.5
+sweet_spot,0.005,1.0
+sweet_spot,0.01,1.0
+one_step_gain,0.001,0.5
+one_step_gain,0.005,1.0
+one_step_gain,0.01,1.0
+full_segment_mc,0.001,0.0
+full_segment_mc,0.005,0.0
+full_segment_mc,0.01,0.0
+random,0.001,0.5
+random,0.005,0.5
+random,0.01,0.5

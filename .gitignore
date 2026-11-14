@@ -2,6 +2,7 @@ examples/__pycache__/
 examples/all_bestmodel/
 examples/all_start.sh
 examples/pkls/
+docs/tse/grouped_students_2students_30days.json
 examples/pred_wandbs/
 examples/saved_model/
 examples/start_predict.sh

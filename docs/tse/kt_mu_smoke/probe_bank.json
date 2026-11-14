@@ -1,0 +1,222 @@
+[
+  {
+    "probe_id": "4af03a5ae7f9d53c1e985b427edc8526be6c0a7bd271a8c35a539317cd54de5a",
+    "kc_identity": "[false,1,false,30,0,0]",
+    "kc_vector": [
+      false,
+      1,
+      false,
+      30,
+      0,
+      0
+    ],
+    "attrs": [
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    "pid": 1,
+    "mu_override": -0.5
+  },
+  {
+    "probe_id": "46de286a192cc6a3f16e2b26b94d4ef4cdd30fa4a2d465f6aff2b05b97275867",
+    "kc_identity": "[false,1,false,30,0,0]",
+    "kc_vector": [
+      false,
+      1,
+      false,
+      30,
+      0,
+      0
+    ],
+    "attrs": [
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    "pid": 1,
+    "mu_override": -0.25
+  },
+  {
+    "probe_id": "48ed0ecb34fe31de98a94d64d71faf1920eaae454bbbe35371b14bcbe9d37d40",
+    "kc_identity": "[false,1,false,30,0,0]",
+    "kc_vector": [
+      false,
+      1,
+      false,
+      30,
+      0,
+      0
+    ],
+    "attrs": [
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    "pid": 1,
+    "mu_override": 0.0
+  },
+  {
+    "probe_id": "b941d5a963dac8947cc830845882216ad2549a343643fe59a5a76c96955244b5",
+    "kc_identity": "[false,1,false,30,0,0]",
+    "kc_vector": [
+      false,
+      1,
+      false,
+      30,
+      0,
+      0
+    ],
+    "attrs": [
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    "pid": 1,
+    "mu_override": 0.25
+  },
+  {
+    "probe_id": "692d4cd12639127a71187b7821a6cac12c6ad2fc165360de71875d883e5c17a7",
+    "kc_identity": "[false,1,false,30,0,0]",
+    "kc_vector": [
+      false,
+      1,
+      false,
+      30,
+      0,
+      0
+    ],
+    "attrs": [
+      3,
+      3,
+      3,
+      3,
+      3,
+      3
+    ],
+    "pid": 1,
+    "mu_override": 0.5
+  },
+  {
+    "probe_id": "182cf96a55916b99743d5ab8f5c4858f3e931c6c00bb824057beed067b2f98e4",
+    "kc_identity": "[true,2,true,50,1,1]",
+    "kc_vector": [
+      true,
+      2,
+      true,
+      50,
+      1,
+      1
+    ],
+    "attrs": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      4
+    ],
+    "pid": 2,
+    "mu_override": -0.5
+  },
+  {
+    "probe_id": "4fc93e06c2b3ff2371f2e2c114dddb62e71137728bcf54457a4e2828934a02a0",
+    "kc_identity": "[true,2,true,50,1,1]",
+    "kc_vector": [
+      true,
+      2,
+      true,
+      50,
+      1,
+      1
+    ],
+    "attrs": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      4
+    ],
+    "pid": 2,
+    "mu_override": -0.25
+  },
+  {
+    "probe_id": "babc7a659d34c2c2527e3fd57891794e4c928be6bd2ba8d801aac8b1df3387db",
+    "kc_identity": "[true,2,true,50,1,1]",
+    "kc_vector": [
+      true,
+      2,
+      true,
+      50,
+      1,
+      1
+    ],
+    "attrs": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      4
+    ],
+    "pid": 2,
+    "mu_override": 0.0
+  },
+  {
+    "probe_id": "5200bbbadb9dc482b23b398a0c4bfc1fcb30910d2926f560790794c195715c22",
+    "kc_identity": "[true,2,true,50,1,1]",
+    "kc_vector": [
+      true,
+      2,
+      true,
+      50,
+      1,
+      1
+    ],
+    "attrs": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      4
+    ],
+    "pid": 2,
+    "mu_override": 0.25
+  },
+  {
+    "probe_id": "eff788f69829fbee2f7bef8d2eb7384d66abdbf7c54147df04b6a9faa485c868",
+    "kc_identity": "[true,2,true,50,1,1]",
+    "kc_vector": [
+      true,
+      2,
+      true,
+      50,
+      1,
+      1
+    ],
+    "attrs": [
+      4,
+      4,
+      4,
+      4,
+      4,
+      4
+    ],
+    "pid": 2,
+    "mu_override": 0.5
+  }
+]

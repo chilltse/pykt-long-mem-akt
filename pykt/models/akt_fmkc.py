@@ -69,7 +69,7 @@ class AKTFMKC(AKT):
         preds = torch.sigmoid(self.out(features).squeeze(-1))
         return (preds, reg, features) if qtest else (preds, reg)
 
-    def encode_question(self, attrs, pid):
+    def encode_question(self, attrs, pid, *, mu_override=None):
         if attrs.dtype not in (torch.int32, torch.int64) or pid.dtype not in (torch.int32, torch.int64):
             raise ValueError("Field IDs and pid must be integers")
         if attrs.shape[-1] != self.num_fields or pid.shape != attrs.shape[:-1]:
@@ -85,6 +85,11 @@ class AKTFMKC(AKT):
         question = c
         if self.drift != "none":
             mu = self.question_scalar(pid) * (pid != 0).unsqueeze(-1)
+            if mu_override is not None:
+                mu = torch.as_tensor(mu_override, dtype=c.dtype, device=c.device)
+                if mu.numel() != 1 or not torch.isfinite(mu).all():
+                    raise ValueError("mu_override must be a finite scalar")
+                mu = mu.reshape(1).expand_as(self.question_scalar(pid))
             question = c + mu * self.question_drift_head(u)
         return question, (u, c, mu, question)
 
@@ -162,8 +167,8 @@ class AKTFMKC(AKT):
                                                    self.seq_len, False, values=y)
             if y is not None:
                 retrievals.append(cache.retrieval_layers[i].append(key, value, cache.next_position, self.seq_len))
-        probability = torch.sigmoid(self.out(torch.cat((x, question), -1))).reshape(())
-        return probability, tuple(questions), tuple(retrievals)
+        probability = torch.sigmoid(self.out(torch.cat((x, question), -1))).reshape(-1)
+        return probability.squeeze(0), tuple(questions), tuple(retrievals)
 
     @torch.no_grad()
     def predict_next(self, cache, attrs, pid, *, model_version, feature_version):
@@ -171,6 +176,47 @@ class AKTFMKC(AKT):
         self.validate_cache(cache, model_version, feature_version)
         question, _ = self._event_question(attrs, pid)
         return self._question_step(cache, question)[0]
+
+    @torch.inference_mode()
+    def predict_next_with_mu_override(self, cache, attrs, pid, mu_override, *,
+                                      model_version, feature_version):
+        """Read-only counterfactual query; existing interactions retain learned drift."""
+        self.validate_cache(cache, model_version, feature_version)
+        # Reuse the original incremental input validation (including PAD checks).
+        self._event_question(attrs, pid)
+        device = next(self.parameters()).device
+        attrs = torch.as_tensor(attrs, device=device).reshape(1, 1, -1)
+        pid = torch.as_tensor(pid, device=device).reshape(1, 1)
+        mu = torch.as_tensor(mu_override, device=device)
+        if mu.numel() != 1 or not torch.isfinite(mu).all():
+            raise ValueError("mu_override must be a finite scalar")
+        question, _ = self.encode_question(attrs, pid, mu_override=mu)
+        return self._question_step(cache, question)[0]
+
+    @torch.no_grad()
+    def predict_candidates(self, cache, attrs, pid, *, model_version, feature_version,
+                           batch_size=256):
+        """Tensor batches of independent candidates, sharing one immutable cache.
+
+        Inputs are encoded IDs [candidates, fields] and [candidates]. Service-level
+        deduplication happens before this method. Chunking bounds temporary K/V
+        and attention memory; each chunk is a real tensor batch, not a scalar loop.
+        """
+        self.validate_cache(cache, model_version, feature_version)
+        if type(batch_size) is not int or batch_size < 1:
+            raise ValueError("batch_size must be a positive integer")
+        device = next(self.parameters()).device
+        attrs, pid = torch.as_tensor(attrs, device=device), torch.as_tensor(pid, device=device)
+        if attrs.ndim != 2 or attrs.shape[1] != self.num_fields or pid.shape != attrs.shape[:1]:
+            raise ValueError("Expected attrs [candidates, fields] and pid [candidates]")
+        if (attrs == 0).any():
+            raise ValueError("Incremental events cannot contain PAD fields")
+        # Validate all IDs before any attention work, including empty tensors.
+        question, _ = self.encode_question(attrs.unsqueeze(1), pid.unsqueeze(1))
+        if not len(attrs):
+            return question.new_empty(0)
+        return torch.cat([self._question_step(cache, q)[0].reshape(-1)
+                          for q in question.split(batch_size)])
 
     @torch.no_grad()
     def observe(self, cache, attrs, pid, response, event_id, *, model_version, feature_version):

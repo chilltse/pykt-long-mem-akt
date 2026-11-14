@@ -1,0 +1,4 @@
+comparison,mean_difference,ci_low,ci_high,number_of_students,number_of_checkpoints,inference
+full_segment_mc vs one_step_gain,0.020734518766403198,0.002639874815940857,0.03882916271686554,2,2,model_internal_only
+full_segment_mc vs sweet_spot,0.020734518766403198,0.002639874815940857,0.03882916271686554,2,2,model_internal_only
+full_segment_mc vs random,0.014934748411178589,0.001253575086593628,0.02861592173576355,2,2,model_internal_only

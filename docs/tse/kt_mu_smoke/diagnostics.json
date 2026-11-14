@@ -1,0 +1,9 @@
+{
+  "static_bayesian_control": {
+    "mean_gain": 0.0027636363636363848,
+    "sem": 0.0027681038935590085,
+    "n": 10000,
+    "exact_expected_gain": 0.0
+  },
+  "noop_max_error": 0.0
+}

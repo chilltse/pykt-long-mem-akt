@@ -2,7 +2,7 @@
 
 本文对照当前仓库代码，说明模型、数据和训练流程的实际差异。这里的“原版”指本仓库 `pykt/models/akt.py` 中的标准 `AKT` 路径，主要以 `emb_type="qid"`、`separate_qa=False`、启用题目难度参数为比较基准；不泛指所有 AKT 论文实现或其他变体。
 
-当前改进版是 **四字段组合 embedding + 原版 AKT 主干 + 逐层滑动窗口 + 学生独立历史 block 缓存**。它保留了 AKT 的核心计算结构，但不能描述成“只换了 embedding，其他行为完全一致”。窗口、监督位置和训练入口也发生了变化；题目身份继续沿用四字段 KC 组合。
+当前改进版是 **四字段组合 embedding + 原版 AKT 主干 + 逐层滑动窗口 + 学生独立历史 block 缓存**。它保留了 AKT 的核心计算结构，但不能描述成“只换了 embedding，其他行为完全一致”。窗口、题目身份、监督位置和训练入口也发生了变化。
 
 ## 1. 先区分三类变化
 
@@ -41,20 +41,17 @@
 
 字段计算复用现有预处理：只保留 play 记录、pitch 差分累加、映射四弦 fret、strings 排序去重、无效帧跳过、每个 exercise 的 prev 重置为 `inf`，响应仍为 reject_reason=0 时取 1，否则取 0。属性计算不使用当前响应。
 
-### 2.3 题目身份只由局部 KC vector 决定
+### 2.3 题目身份也改变了
+
+新版题目 ID 为：
 
 ```text
-question_key = prev_frets|prev_strings|frets|strings
-question_id = 该 question_key 在当前 fold 训练词表中的整数索引
+[song_id, exercise_id, exercise_part_index, 原始事件索引]
 ```
 
-四字段完全相同，就共享 question ID 和题目标量 μ，无论来自哪个学生、歌曲、exercise、片段或事件位置。四字段中任一字段不同，即为不同的原始题目身份。这与现有 Yousician 标准预处理的组合身份一致，不引入歌曲或谱面位置条件。
+这样四字段相同、但属于不同练习位置的事件，可以有不同的题目标量；同一练习位置的多次作答共享题目身份。保留过滤前的原始索引，避免跳过无效帧后位置发生偏移。
 
-题目词表仍只由训练学生拟合；未见完整组合统一回退至索引 0、μ=0，但四字段 embedding 仍可组合预测。不同未见组合共享的是未知回退编码，不是把它们判定为相同原始 KC。
-
-song_id、exercise_id 不参与编码，也不要求原始记录提供它们。时间、session、part 只用于恢复学生练习顺序，不输入 embedding 或难度标量；每条 exercise 记录起点仍重置 prev 为 inf。学生级历史、已确认的逐层局部窗口和缓存保持不变。相同 KC 共享题目表示，但学生历史不同，最终预测可以不同。
-
-这是对 PianoKT 参考手顺中“使用原始谱面位置题目 ID”的明确覆盖：Yousician 采用局部四字段身份，不照搬曲目级题目定义。
+这不是对原数据 question ID 的简单重命名，而是一次题目身份定义调整。现有 schema 未额外加入乐谱版本字段；若 exercise ID 不能唯一标识谱面版本，需要另行扩展。
 
 ## 3. Embedding：保留标量难度思想，替换属性表示和漂移方向
 
@@ -275,7 +272,7 @@ train_yousician_akt.py --dataset_name yousician --fold 0
 
 ## 10. 如何解释实验结果
 
-当前三种 drifting 配置之间，使用相同数据、seed、窗口、缓存、预算和选模规则，可以比较漂移设计的影响。但完整新版与原通用 AKT 跑分不同，不能直接归因于四字段 embedding，因为还同时改变了数据划分、词表拟合、可见历史、首事件监督和每次更新的 batch 组织。选模与训练循环已对齐共享入口。
+当前三种 drifting 配置之间，使用相同数据、seed、窗口、缓存、预算和选模规则，可以比较漂移设计的影响。但完整新版与原通用 AKT 跑分不同，不能直接归因于四字段 embedding，因为还同时改变了题目身份、数据划分、词表拟合、可见历史、首事件监督和每次更新的 batch 组织。选模与训练循环已对齐共享入口。
 
 如果后续要做归因清晰的原版对照，应另行对齐学生集合、事件过滤、题目 ID、词表拟合范围、窗口与缓存、损失选择、更新预算、梯度裁剪和选模指标，再比较离散 KC 表示与组合属性表示。该公平对照实验尚未实现或执行，本文不声称新版优于原版。
 
@@ -285,7 +282,7 @@ train_yousician_akt.py --dataset_name yousician --fold 0
 - [四字段模型](../pykt/models/yousician_akt.py)：字段 embedding、三种漂移、未知题目处理、padding。
 - [通用数据与缓存](../pykt/datasets/student_block_dataset.py)：预处理产物加载、编码和学生 block cache。
 - [通用学生预处理](../pykt/preprocess/student_sequences.py)：学生 fold 划分和训练专属词表。
-- [Yousician 适配器](../pykt/preprocess/yousician_field_preprocess.py)：原始 schema、局部 KC 组合身份与配置注册。
+- [Yousician 适配器](../pykt/preprocess/yousician_field_preprocess.py)：原始 schema、题目身份与配置注册。
 - [原始字段预处理](../pykt/preprocess/yousician_preprocess_kc_fmkc_standard.py)：四字段与响应生成，新增可选原始事件索引。
 - [字段 batch 适配](../pykt/models/yousician_akt_runner.py)：供共享 train_model/evaluate 调用，不包含独立训练循环。
 - [训练入口](../examples/train_yousician_akt.py)：默认配置、训练循环、选模和保存。
@@ -295,6 +292,6 @@ train_yousician_akt.py --dataset_name yousician --fold 0
 - [验证测试](../tests/test_yousician_akt.py)：模型与缓存的回归测试。
 - [运行说明](yousician_akt_field_embedding_cn.md)：三种消融的具体命令。
 
-工程重构验证记录为 19 项测试通过，覆盖因果性、右 padding、未知值、学生隔离、逐层窗口、历史梯度和 checkpoint 等。完整前缀等价测试使用 seq_len=None，不能作为局部窗口加有限缓存与整段运行完全等价的证明。
+工程重构验证记录为 17 项测试通过，覆盖因果性、右 padding、未知值、学生隔离、逐层窗口、历史梯度和 checkpoint 等。完整前缀等价测试使用 seq_len=None，不能作为局部窗口加有限缓存与整段运行完全等价的证明。
 
 已完成先预处理、再按 dataset_name/fold 调用共享训练入口的小样本训练与保存重载检查，尚未执行完整数据训练或公平对照实验。本文是实现说明，不是性能评估报告。

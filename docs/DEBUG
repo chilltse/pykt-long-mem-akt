@@ -1,0 +1,9 @@
+export PROJECT_ID="pianokt"
+export REGION="us-central1"
+
+SHA=$(git rev-parse HEAD)
+VERSION="v1.0.0-${SHA}"
+
+IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/pianokt/backend:${VERSION}"
+
+echo "$IMAGE"

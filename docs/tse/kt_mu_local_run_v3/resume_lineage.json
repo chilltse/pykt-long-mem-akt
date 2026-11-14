@@ -1,0 +1,10 @@
+{
+  "source_run": "docs/tse/kt_mu_local_run_v2",
+  "reason": "Only validation tolerance changed from 1e-5 to 2e-5; no scoring computation changes",
+  "copied": [
+    {
+      "file": "d80417e24d40737d181f.json",
+      "sha256": "6dbe9ac796ad5b7adf4a1208643a7baca8f8b9be2fd8eb1b84c321f329dfec19"
+    }
+  ]
+}

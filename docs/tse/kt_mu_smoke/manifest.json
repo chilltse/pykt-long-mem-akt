@@ -1,0 +1,23 @@
+{
+  "mode": "mock",
+  "checkpoint_sha256": "synthetic_untrained_model",
+  "feature_version": "68b743c33f2e8b4a490a5b81162373a5a38100bc4ffe27ec8cdd340dd7822116",
+  "probe_bank_digest": "3d777a15a325ec5564dbb6f8f4f898096ed06cfa28e41fb908e74a6d7238d838",
+  "catalog_digest": "a289f905b5f9ada8b3116cd96a36abe0f8587caa209e4ab62b222495b20ee4a8",
+  "student_snapshot_digest": "23644570a6eb2b33e661799c9fd60a311f52b78b86d17f864be2bd4efade1c5e",
+  "runtime_configuration": {
+    "config": null,
+    "mode": "mock",
+    "output": "docs/tse/kt_mu_smoke",
+    "dry_run": false,
+    "student_limit": 100,
+    "candidate_limit": 100,
+    "selection_mc": 4,
+    "evaluation_mc": 8,
+    "reference_mc": 16,
+    "seed": 3407
+  },
+  "kc_labeler_version": "1.2.0",
+  "drift": "response",
+  "future_validation": "not_evaluated_insufficient_real_outcomes"
+}

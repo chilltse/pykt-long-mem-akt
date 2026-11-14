@@ -1,0 +1,34 @@
+{
+  "pianokt_commit": "73d4427c1d7ce403736caa06845b38fb59e7546b",
+  "pykt_commit": "357574dd458338f3c8eece9e33cc6d9bf8ec5026",
+  "mode": "offline",
+  "checkpoint_sha256": "fb2657a9ee76d6d7f058e32dc86e63c97507a051f897929724c7431a371b5a39",
+  "feature_version": "1b59db4d1a8156400138163b416b5008c24e9b048c03044e90937e3c4adc332b",
+  "probe_bank_digest": "3491c30e237c70f5194aa737b33163cec92af65e9fa4231b5bc94a467db180eb",
+  "catalog_digest": "9dbc8bcbbf85e5587e46a535cdd38bbd2236119beb44c185803ea122261e3f9e",
+  "student_snapshot_digest": "3c6c7c7936aa0dc9682d630f202f318db017484014adad8b9836c476cfc25887",
+  "implementation_digest": "09e70506c7c7270a2ab1ca5a112d8601da258c8cc84ecdf3eadd9f21784404a4",
+  "data_provenance": {
+    "history_origin": "synthetic",
+    "history_warning": "Approximate scoring only; official matcher has not been run. Split by student before windowing.",
+    "history_sha256": "2e206fc72fa6267eb87c1a86669bf738ac7a8e791ad8deebffb9358ab9ad343c",
+    "catalog_manifest_sha256": "977cce1c61d1616c0326a3206ed4d232ff5cca2252e13e3167fbc549358dac39",
+    "ready_status_checked": false,
+    "standalone_reference_sidecar_checked": false
+  },
+  "runtime_configuration": {
+    "config": "configs/experiments/local_mu_probe.yaml",
+    "mode": "offline",
+    "output": "docs/tse/kt_mu_local_run_v2",
+    "dry_run": false,
+    "student_limit": 2,
+    "candidate_limit": 3,
+    "selection_mc": 4,
+    "evaluation_mc": 16,
+    "reference_mc": 32,
+    "seed": 3407
+  },
+  "kc_labeler_version": "1.2.0",
+  "drift": "response",
+  "future_validation": "not_evaluated_insufficient_real_outcomes"
+}

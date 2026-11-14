@@ -1,0 +1,11 @@
+cli:
+  candidate_limit: 100
+  config: null
+  dry_run: false
+  evaluation_mc: 8
+  mode: mock
+  output: docs/tse/kt_mu_smoke_v2
+  reference_mc: 16
+  seed: 3407
+  selection_mc: 4
+  student_limit: 100

@@ -196,12 +196,13 @@ class TransformerLayer(nn.Module):
 
     def forward_step(self, query, cache, position, seq_len, include_current,
                      values=None, apply_pos=True):
-        """Single event; return output and uncommitted current K/V projections."""
+        """Independent events at one position sharing read-only historical K/V."""
         head = self.masked_attn_head
         if self.training or head.emb_type != "qid":
             raise ValueError("Incremental attention requires eval mode and emb_type=qid")
+        batch = query.size(0)
         def project(linear, tensor):
-            return linear(tensor).view(1, 1, head.h, head.d_k).transpose(1, 2)
+            return linear(tensor).view(batch, 1, head.h, head.d_k).transpose(1, 2)
         q = project(head.k_linear if head.kq_same else head.q_linear, query)
         key = project(head.k_linear, query)
         value = None if values is None else project(head.v_linear, values)
@@ -209,8 +210,8 @@ class TransformerLayer(nn.Module):
         if include_current:
             if value is None:
                 raise ValueError("Self attention requires current values")
-            keys = torch.cat((keys, key), dim=2)
-            vals = torch.cat((vals, value), dim=2)
+            keys = torch.cat((keys.expand(batch, -1, -1, -1), key), dim=2)
+            vals = torch.cat((vals.expand(batch, -1, -1, -1), value), dim=2)
             positions = torch.cat((positions, positions.new_tensor([position])))
         distance = position - positions
         allowed = distance >= (0 if include_current else 1)
@@ -218,7 +219,7 @@ class TransformerLayer(nn.Module):
             allowed = allowed & (distance < seq_len + (not include_current))
         aggregate = attention_incremental(q, keys, vals, position, positions,
                                           allowed, head.gammas, head.dropout)
-        output = head.out_proj(aggregate.transpose(1, 2).reshape(1, 1, head.d_model))
+        output = head.out_proj(aggregate.transpose(1, 2).reshape(batch, 1, head.d_model))
         output = self.layer_norm1(query + self.dropout1(output))
         if apply_pos:
             hidden = self.linear2(self.dropout(self.activation(self.linear1(output))))

@@ -1,5 +1,7 @@
 """Python inference API. The model is shared; real and hypothetical histories are not."""
 import hashlib
+import logging
+import time
 import random
 import secrets
 import threading
@@ -114,15 +116,32 @@ class AKTFMKCInferenceEngine:
         return [(c.candidate_id, self.encode_kc(c.kc_vector)) for c in items]
 
     def _predict(self, cache, encoded):
-        return [dict(candidate_id=cid, probability=float(self.model.predict_next(cache, q.attrs, q.pid, **self.versions)),
-                     **q.as_dict()) for cid, q in encoded]
+        if not encoded:
+            return []
+        unique, indices, inverse = [], {}, []
+        for _, q in encoded:
+            key = (tuple(q.attrs), q.pid)
+            if key not in indices:
+                indices[key] = len(unique)
+                unique.append(q)
+            inverse.append(indices[key])
+        probabilities = self.model.predict_candidates(
+            cache, [q.attrs for q in unique], [q.pid for q in unique], **self.versions).tolist()
+        return [dict(candidate_id=cid, probability=probabilities[index], **q.as_dict())
+                for (cid, q), index in zip(encoded, inverse)]
 
     def predict_candidates(self, student_id, candidates):
+        started = time.perf_counter()
         identifier(student_id)
         encoded = self._candidates(candidates)
         with self.lock:
             cache = self.store.recover(student_id)
-            return dict(state=self._state(student_id, cache), predictions=self._predict(cache, encoded))
+            result = dict(state=self._state(student_id, cache), predictions=self._predict(cache, encoded))
+            logging.getLogger(__name__).info(
+                "candidate_prediction count=%d unique_kc=%d total_ms=%.3f device=%s mode=tensor_batch",
+                len(encoded), len({(tuple(q.attrs), q.pid) for _, q in encoded}),
+                (time.perf_counter() - started) * 1000, next(self.model.parameters()).device)
+            return result
 
     def predict_next(self, student_id, kc_vector):
         return self.predict_candidates(student_id, [dict(candidate_id='next', kc_vector=kc_vector)])

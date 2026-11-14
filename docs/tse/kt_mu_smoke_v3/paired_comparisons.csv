@@ -1,0 +1,4 @@
+comparison,mean_difference,ci_low,ci_high,number_of_students,number_of_checkpoints,inference
+full_segment_mc vs one_step_gain,0.0,,,1,1,synthetic_only
+full_segment_mc vs sweet_spot,0.0,,,1,1,synthetic_only
+full_segment_mc vs random,0.0,,,1,1,synthetic_only
