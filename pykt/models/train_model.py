@@ -297,9 +297,12 @@ def model_forward(model, data, rel=None):
     return loss
     
 
-def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, test_loader=None, test_window_loader=None, save_model=False, data_config=None, fold=None):
+def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, test_loader=None, test_window_loader=None, save_model=False, data_config=None, fold=None, epoch_callback=None):
     max_auc, best_epoch = (float("-inf") if getattr(model, "student_block_input", False) else 0), -1
     train_step = 0
+    supervised_events = 0
+    import time
+    benchmark_start = time.monotonic()
 
     rel = None
     if model.model_name == "rkt":
@@ -320,6 +323,8 @@ def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, t
         loss_mean = []
         for data in train_loader:
             train_step+=1
+            if epoch_callback is not None and isinstance(data, dict) and "loss_mask" in data:
+                supervised_events += int(data["loss_mask"].sum())
             if model.model_name in que_type_models and model.model_name not in ["lpkt", "rkt"] + direct_train_que_type_models:
                 model.model.train()
             else:
@@ -378,6 +383,10 @@ def train_model(model, train_loader, valid_loader, num_epochs, opt, ckpt_path, t
         print(f"            testauc: {round(testauc,4)}, testacc: {round(testacc,4)}, window_testauc: {round(window_testauc,4)}, window_testacc: {round(window_testacc,4)}")
 
 
+        if epoch_callback is not None:
+            epoch_callback(dict(epoch=i, train_loss=float(loss_mean), validation_auc=float(auc),
+                validation_accuracy=float(acc), best_epoch=best_epoch, optimizer_steps=train_step,
+                supervised_events=supervised_events, elapsed_seconds=time.monotonic()-benchmark_start))
         if i - best_epoch >= 10:
             break
     return testauc, testacc, window_testauc, window_testacc, validauc, validacc, best_epoch

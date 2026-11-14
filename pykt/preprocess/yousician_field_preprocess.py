@@ -7,10 +7,19 @@ from .yousician_preprocess_kc_fmkc_standard import _events_to_event_rows
 FIELD_NAMES = ("prev_frets", "prev_strings", "frets", "strings")
 
 
-def read_students(path):
+def read_students(path, audit=None):
     with open(path, encoding="utf-8") as handle:
         records = json.load(handle)
+    if audit is not None:
+        audit.update(raw_record_count=len(records), raw_student_count=len({str(r.get("user_id")) for r in records}),
+                     non_play_record_count=sum(r.get("play_mode") != "play" for r in records))
     records = [r for r in records if r.get("play_mode") == "play"]
+    if audit is not None:
+        from collections import Counter
+        keys = Counter((str(r["user_id"]), r["days_since_signup"], r.get("session_index", 0),
+                        r.get("exercise_part_index", 0)) for r in records)
+        audit.update(filtered_play_record_count=len(records), sorting_tie_groups=sum(v > 1 for v in keys.values()),
+                     sorting_tie_extra_records=sum(v-1 for v in keys.values()))
     records.sort(key=lambda r: (str(r["user_id"]), r["days_since_signup"],
                                 r.get("session_index", 0), r.get("exercise_part_index", 0)))
     students = defaultdict(list)
@@ -26,6 +35,8 @@ def read_students(path):
             students[str(record["user_id"])].append((kc.split("|"), kc, response))
     if not students:
         raise ValueError("No valid play events")
+    if audit is not None:
+        audit["skipped_reasons"] = {"invalid_events_key_type_or_value": skipped}
     return dict(students), skipped
 
 

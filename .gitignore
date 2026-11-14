@@ -77,3 +77,8 @@ docs/superpowers/
 *.sqlite3-wal
 *.sqlite3-shm
 *.ckpt
+
+# Private cluster configuration and benchmark artifacts
+scripts/yousician_benchmark/cluster.env
+saved_model/yousician_fmkc_benchmark/
+benchmark_runs/

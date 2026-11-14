@@ -103,13 +103,22 @@ def init_student_loaders(data_config, fold, block_size=128, cache_blocks=1,
     if not root.is_absolute():
         root = Path(__file__).resolve().parents[2] / "examples" / root
     artifact = json.loads((root / data_config["fold_file"].format(fold=fold)).read_text())
-    sequences = json.loads((root / data_config["student_file"]).read_text())
     encoding, splits = artifact["encoding"], artifact["splits"]
     groups = [set(splits[key]) for key in ("train", "valid", "test")]
     if any(not group for group in groups) or any(groups[i] & groups[j]
             for i in range(3) for j in range(i)):
         raise ValueError("Prepared student splits must be nonempty and disjoint")
-    students = {uid: encode_student(events, encoding) for uid, events in sequences.items()}
+    selected_ids = list(dict.fromkeys(uid for group in splits.values() for uid in group))
+    if "student_index_file" in data_config:
+        index_path = Path(data_config["student_index_file"])
+        if not index_path.is_absolute():
+            index_path = root / index_path
+        index = json.loads(index_path.read_text())
+        students = {uid: encode_student(json.loads((index_path.parent / index[uid]).read_text()), encoding)
+                    for uid in selected_ids}
+    else:
+        sequences = json.loads((root / data_config["student_file"]).read_text())
+        students = {uid: encode_student(sequences[uid], encoding) for uid in selected_ids}
     data_config.update(field_sizes=[len(v) + 3 for v in encoding["fields"]],
                        num_q=len(encoding["questions"]), selected_fold=fold,
                        encoding=encoding, splits=splits, block_size=block_size,
